@@ -196,20 +196,22 @@ app.mount("#app");
 
 ## ★ Basic Virtual DOM 部門
 
-- 大きくなりそうなので項目は随時更新
+- スケジューラの実装
+- 対応できていないパッチの実装 (主に属性周り)
+- Fragment の対応
+
+## ★ Reactive System 部門
+
+- ref api
+- computed api
+- watch api
 
 ## ★ Basic Component System 部門
 
-大きくなりそうなので項目は随時更新
-
 - provide/inject
-- computed api
-- watch api
 - lifecycle hooks
 
 ## ★ Basic Template Compiler 部門
-
-大きくなりそうなので項目は随時更新
 
 - v-on
 - v-bind
@@ -218,13 +220,11 @@ app.mount("#app");
 
 ## ★ Basic SFC Compiler 部門
 
-大きくなりそうなので項目は随時更新
-
 - SFC の基本
 - script setup
-- style block
+- compiler macro
 
-## ★ Web Application Essentials 部門
+## ★ Web Application Essentials 部門 (付録)
 
 - router
 - store

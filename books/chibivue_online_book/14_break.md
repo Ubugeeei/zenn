@@ -54,9 +54,53 @@ h("div", { id: "my-app" }, [
 
 ここで初めて仮想 DOM のようなものが登場しました。
 
+## リアクティブシステムとは何か、どうやって画面を動的に更新していくかということが分かった
+
+Vue の醍醐味である、リアクティブシステムがどういう実装で成り立っているのか、そもそもリアクティブシステムとはなんのことなのか、ということについて理解しました
+
+```ts
+const targetMap = new WeakMap<any, KeyToDepMap>();
+
+function reactive<T extends object>(target: T): T {
+  const proxy = new Proxy(target, {
+    get(target: object, key: string | symbol, receiver: object) {
+      track(target, key);
+      return Reflect.get(target, key, receiver);
+    },
+
+    set(
+      target: object,
+      key: string | symbol,
+      value: unknown,
+      receiver: object
+    ) {
+      Reflect.set(target, key, value, receiver);
+      trigger(target, key);
+      return true;
+    },
+  });
+}
+```
+
+```ts
+const component = {
+  setup() {
+    const state = reactive({ count: 0 }); // create proxy
+
+    const increment = () => {
+      state.count++; // trigger
+    };
+
+    () => {
+      return h("p", {}, `${state.count}`); // track
+    };
+  },
+};
+```
+
 ## 仮想 DOM とはなんなのか、何が嬉しいのか、どうやって実装するのかが分かった
 
-h 関数の内部処理として、仮想 DOM の比較による効率的なレンダリングの方法について理解しました。
+h 関数を使ったレンダリングの改善として、仮想 DOM の比較による効率的なレンダリングの方法について理解しました。
 
 ```ts
 // 仮想DOMのinterface
@@ -92,10 +136,213 @@ const nextVNode = component.render();
 patch(prevVNode, nextVNode);
 ```
 
-## リアクティブシステムとは何か、どうやって画面を動的に更新していくかということが分かった
+## コンポーネントの構造とコンポーネント間でのやりとりをどう実現するのかが分かった。
 
-Vue の醍醐味である、リアクティブシステムがどういう実装で成り立っているのか、そもそもリアクティブシステムとはなんのことなのか、ということについて理解しました
+```ts
+export interface ComponentInternalInstance {
+  type: Component;
 
+  vnode: VNode;
+  subTree: VNode;
+  next: VNode | null;
+  effect: ReactiveEffect;
+  render: InternalRenderFunction;
+  update: () => void;
+
+  propsOptions: Props;
+  props: Data;
+  emit: (event: string, ...args: any[]) => void;
+
+  isMounted: boolean;
+}
 ```
 
+```ts
+const MyComponent = {
+  props: { someMessage: { type: String } },
+
+  setup(props: any, { emit }: any) {
+    return () =>
+      h("div", {}, [
+        h("p", {}, [`someMessage: ${props.someMessage}`]),
+        h("button", { onClick: () => emit("click:change-message") }, [
+          "change message",
+        ]),
+      ]);
+  },
+};
+
+const app = createApp({
+  setup() {
+    const state = reactive({ message: "hello" });
+    const changeMessage = () => {
+      state.message += "!";
+    };
+
+    return () =>
+      h("div", { id: "my-app" }, [
+        h(
+          MyComponent,
+          {
+            "some-message": state.message,
+            "onClick:change-message": changeMessage,
+          },
+          []
+        ),
+      ]);
+  },
+});
 ```
+
+## コンパイラとは何か、テンプレートの機能はどう実現されているのかが分かった
+
+コンパイラとはどういうものかについて理解し、テンプレートのコンパイラを実装することで、より生の HTML に近く、かつマスタッシュ構文などの Vue 固有な機能についての実装を理解しました。
+
+```ts
+const app = createApp({
+  setup() {
+    const state = reactive({ message: "Hello, chibivue!", input: "" });
+
+    const changeMessage = () => {
+      state.message += "!";
+    };
+
+    const handleInput = (e: InputEvent) => {
+      state.input = (e.target as HTMLInputElement)?.value ?? "";
+    };
+
+    return { state, changeMessage, handleInput };
+  },
+
+  template: `
+    <div class="container" style="text-align: center">
+      <h2>{{ state.message }}</h2>
+      <img
+        width="150px"
+        src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Vue.js_Logo_2.svg/1200px-Vue.js_Logo_2.svg.png"
+      />
+      <p><b>chibivue</b> is the minimal Vue.js</p>
+
+      <button @click="changeMessage"> click me! </button>
+
+      <br />
+
+      <input @input="handleInput"/>
+      <p>input value: {{ state.input }}</p>
+
+      <style>
+        .container {
+          height: 100vh;
+          padding: 16px;
+          background-color: #becdbe;
+          color: #2c3e50;
+        }
+      </style>
+    </div>
+  `,
+});
+```
+
+## Vite プラグインを通して SFC コンパイラの実現方法について理解した。
+
+実装して template コンパイラを活用して、script, template, style を一つのファイルに記述するオリジナルのファイルフォーマットをどう実現するかについて理解しました。  
+vite プラグインでどういうことができるのか、transform や仮想モジュールについて学びました。
+
+```vue
+<script>
+import { reactive } from "chibivue";
+
+export default {
+  setup() {
+    const state = reactive({ message: "Hello, chibivue!", input: "" });
+
+    const changeMessage = () => {
+      state.message += "!";
+    };
+
+    const handleInput = (e) => {
+      state.input = e.target?.value ?? "";
+    };
+
+    return { state, changeMessage, handleInput };
+  },
+};
+</script>
+
+<template>
+  <div class="container" style="text-align: center">
+    <h2>{{ state.message }}</h2>
+    <img
+      width="150px"
+      src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Vue.js_Logo_2.svg/1200px-Vue.js_Logo_2.svg.png"
+    />
+    <p><b>chibivue</b> is the minimal Vue.js</p>
+
+    <button @click="changeMessage">click me!</button>
+
+    <br />
+
+    <input @input="handleInput" />
+    <p>input value: {{ state.input }}</p>
+  </div>
+</template>
+
+<style>
+.container {
+  height: 100vh;
+  padding: 16px;
+  background-color: #becdbe;
+  color: #2c3e50;
+}
+</style>
+```
+
+# これからについて
+
+これからは、より実用的なものにしていくにあたって、それぞれのパートをより詳しくやっていきます。
+そして、それぞれの部門は互いに独立するものなので、どれからやって貰っても構いません。それに伴って、これ以降の各部門の最初のソースコードは「Minimal Example 部門の最後のソースコードの状態」からスタートします。そして、これから各部門でやることと、進め方(方針)について少し説明します。
+
+## どういうことをやるのか
+
+この本の冒頭と重複する部分も多いですが、改めて。  
+ここからは 5 部門 + 付録 1 部門に分かれます。
+
+- Basic Virtual DOM 部門
+  - スケジューラの実装
+  - 対応できていないパッチの実装 (主に属性周り)
+  - Fragment の対応
+- Basic Reactive System 部門
+  - ref api
+  - computed api
+  - watch api
+- Basic Component System 部門
+  - provide/inject
+  - lifecycle hooks
+- Basic Template Compiler 部門
+  - v-on
+  - v-bind
+  - v-for
+  - v-model
+- Basic SFC Compiler 部門
+  - SFC の基本
+  - script setup
+  - compiler macro
+- Web Application Essentials 部門 (付録)
+
+  この部門は付録です。Web 開発において、頻繁に Vue と共に利用されるライブラリの実装をします。
+  この部門だけは、ある程度他の部門に依存する部分があります。
+  勿論、この部門からやり始めて他の部門でやる必要な実装については随時やっていく、という方針でも問題はないですが、多少わかりづらい可能性はあります。
+
+  - store
+  - route
+
+  ここでは上記の 2 つを扱いますが、ぜひ他にも思いつくものがあれば実装してみましょう！
+
+## 方針について
+
+Minimal Example 部門ではかなり細かめに実装の手順について説明してきました。  
+ここまで実装してきた皆さんならば、もうかなり本家 Vue のソースコードを読めるようになっているはずです。  
+そこでこれ以降の部では、説明は大まかな方針までにとどめて、実際のコードは本家のコードを読みながら、もしくは自分で考えながら実装していこうと思います。  
+(け、決して、細かく書くのが面倒臭くなってきたとか、そういうことではないですからね！)  
+まあ、本を読んでその通りに実装するのは最初のうちは楽しいですが、ある程度形になってきたら自分でやってみるほうが楽しいですし、より深い理解にもつながるかと思います。  
+ここから先はこの本はある種のガイドライン程度に捉えて貰って、本編は Vue 本家にあります！
