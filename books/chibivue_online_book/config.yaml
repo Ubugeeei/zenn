@@ -8,3 +8,7 @@ chapters:
   - 4_setup_project
   - 5_create_app_api
   - 6_minimum_reactive
+  - 7_root_component
+  - 8_minimum_virtual_dom
+  - 9_minimum_compiler
+  - 10_break
