@@ -85,5 +85,26 @@ script setup で使用する defineComponent や defineProps などもこのコ�
 
 ちなみに今回の実装では実際に Vite のプラグインを実装して自作 SFC コンパイラを動作させます。
 
+# vuejs/core のディレクトリを覗いてみる
+
+Vue の主要な要素をざっと把握したところで実施のソースコードがどういう感じになっているか見てみましょう(といってもディレクトリだけだけど)
+packages というディレクトリにメインのソースコードが詰まっています。
+
+https://github.com/vuejs/core/tree/main/packages
+
+中でも注目したいのは、
+
+- compiler-core
+- compiler-dom
+- compiler-sfc
+- reactivity
+- runtime-core
+- runtime-dom
+- vue
+
+です。
+それぞれの依存関係についてはコントリビュートガイドのこの図がとてもわかりやすいです。
+https://github.com/vuejs/core/blob/main/.github/contributing.md#package-dependencies
+
 <br/>
 この本では一通りこれらについての実装と解説を行います。
