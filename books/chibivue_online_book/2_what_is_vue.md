@@ -25,17 +25,17 @@ Vue.js とは「Web ユーザーインターフェース構築のための、親
 > import { createApp } from "vue";
 >
 > createApp({
-> 	data() {
-> 		return {
-> 			count: 0,
-> 		};
-> 	},
+>   data() {
+>     return {
+>       count: 0,
+>     };
+>   },
 > }).mount("#app");
 > ```
 >
 > ```html
 > <div id="app">
-> 	<button @click="count++">Count is: {{ count }}</button>
+>   <button @click="count++">Count is: {{ count }}</button>
 > </div>
 > ```
 
