@@ -2,13 +2,13 @@ title: "中レイヤを知りたい人のためのVue.js作成入門"
 topics: ["Vue", "仮想DOM", "コンパイラ", "リアクティブシステム", "自作"]
 published: false
 chapters:
-  - 1_about
-  - 2_what_is_vue
-  - 3_vue_core_components
-  - 4_setup_project
-  - 5_create_app_api
-  - 6_minimum_reactive
-  - 7_root_component
-  - 8_minimum_virtual_dom
-  - 9_minimum_compiler
+  - 01_about
+  - 02_what_is_vue
+  - 03_vue_core_components
+  - 04_setup_project
+  - 05_create_app_api
+  - 06_minimum_reactive
+  - 07_root_component
+  - 08_minimum_virtual_dom
+  - 09_minimum_compiler
   - 10_break
