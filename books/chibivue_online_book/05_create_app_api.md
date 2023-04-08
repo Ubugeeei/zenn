@@ -150,17 +150,20 @@ app.mount("#app");
 それに伴って、ファイルやディレクトリ構成も Vue.js の形を常に意識したいわです。  
 なので、少しばかりリファクタさせてください。。。
 
-### VUe.js の設計
+### Vue.js の設計
 
 #### runtime-core と runtime-dom
 
 ここで少し Vue.js 本家の構成についての説明です。  
-今回のリファクタでは`runtime-core`というディレクトリと`runtime-dom`というディレクトリを作ります。  
+今回のリファクタでは`runtime-core`というディレクトリと`runtime-dom`というディレクトリを作ります。
+
 それぞれなんなのかというと、runtime-core というのは、Vue.js のランタイム機能のうち本当にコアになる機能が詰まっています。  
-と言われても何がコアで何がコアじゃないのか今の段階だとわかりづらいと思います。  
+と言われても何がコアで何がコアじゃないのか今の段階だとわかりづらいと思います。
+
 なので、runtime-dom との関係を見てみるとわかりやすいかなと思います。  
 runtime-dom というのは名前の通り、DOM に依存した実装を置くディレクトリです。ざっくり「ブラウザに依存した処理」という理解をしてもらえれば問題ないです。  
-例を挙げると querySelector や createElement などの DOM 操作が含まれます。  
+例を挙げると querySelector や createElement などの DOM 操作が含まれます。
+
 runtime-core ではそういった処理書かず、あくまで純粋は TypeScript の世界の中で Vue.js のランタイムに関するコアロジックを記述するような設計になっています。  
 例を挙げると、仮想 DOM に関する実装であったり、コンポーネントに関する実装だったりです。  
 まあ、この辺りに関しては chibivue の開発が進むにつれて明確になってくると思うのでわからなかったらとりあえず本の通りにリファクタしてもらえれば問題ありません。
@@ -190,5 +193,121 @@ touch packages/runtime-dom/nodeOps.ts
 
 ![refactor_createApp!](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/refactor_createApp.png)
 
+#### renderer の設計
 
+先ほども話したとおり、Vue.js では DOM に依存する部分と純粋な Vue.js のコア機能部分を分離しています。
+まず、注目して欲しいのは`runtime-core`の方の renderer factory と `runtime-dom`の node-ops です。
+先ほど実装した例だと、createApp が返す app の mount メソッドで直接レンダリングをしていました。
 
+```ts
+// これは先ほどのコード
+export const createApp = (options: Options): App => {
+  return {
+    mount: (selector) => {
+      const root = document.querySelector(selector);
+      if (root) {
+        root.innerHTML = options.render(); // レンダリング
+      }
+    },
+  };
+};
+```
+
+ここまでではコードも少なく、全く複雑ではないので一見問題ないように見えます。  
+ですが、今後は仮想 DOM のパッチレンダリングのロジック等を書くことになるのでかなり複雑になります。
+Vue.js ではこのレンダリングを担う部分を`renderer`として切り出しています。
+それが`runtime-core/renderer.ts`です。
+レンダリングというと SPA においてはブラウザの DOM を司る API(document)に依存することが安易に想像できると思います。(element を作ったり text をセットしたり)
+そこで、この DOM に依存する部分と Vue.js が持つコアなレンダーロジックを切り離すために、いくつかの工夫がしてあります。
+以下のとおりです。
+
+- `runtime-dom/nodeOps`に DOM 操作をするためのオブジェクトを実装する
+- `runtime-core/renderer`ではあくまで、render のロジックのみを持つオブジェクトを生成するためのファクトリ関数を実装する。  
+  その際、Node(DOM に限らず)を扱うオブジェクトは factory の関数の引数として受け取るようにしてある。
+- `runtime-dom/index.ts`で nodeOps と renderer のファクトリをもとに renderer を完成させる
+
+ここまでの話が図の赤く囲まれた部分です。
+![refactor_createApp_render](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/refactor_createApp_render.png)
+
+ソースコードベースで説明してみます。今の時点ではまだ仮想 DOM のレンダリング機能は実装していないので、先ほどと同じ機能で作ります。
+
+まず、`runtime-core/renderer`に Node(DOM に限らず)のオペレーション用オブジェクトの interface を実装します。
+
+```ts
+export interface RendererOptions<HostNode = RendererNode> {
+  setElementText(node: HostNode, text: string): void;
+}
+
+export interface RendererNode {
+  [key: string]: any;
+}
+
+export interface RendererElement extends RendererNode {}
+```
+
+ここではまだ setElementText という関数しかありませんが、ゆくゆくは createElement だったり、removeChild などが実装されるイメージをしてもらえれば大丈夫です。
+
+RendererNode と RendererElement については一旦気にしないでください。(ここの実装はあくまで DOM に依存してはいけないので、Node となるものを定義してジェネリックにしているだけです。)  
+この、RendererOptions を受け取る形で renderer のファクトリをこのファイルに実装します。
+
+```ts
+export type RootRenderFunction<HostElement = RendererElement> = (
+  message: string,
+  container: HostElement
+) => void;
+
+export function createRenderer(options: RendererOptions) {
+  const { setElementText: hostSetElementText } = options;
+
+  const render: RootRenderFunction = (message, container) => {
+    hostSetElementText(container, message); // 今回はメッセージを挿入するだけなのでこういう実装になっている
+  };
+
+  return { render };
+}
+```
+
+続いて、`runtime-dom/nodeOps`側の実装です。
+
+```ts
+import { RendererOptions } from "../runtime-core";
+
+export const nodeOps: RendererOptions<Node> = {
+  setElementText(node, text) {
+    node.textContent = text;
+  },
+};
+```
+
+特に難しいことはないと思います。
+
+それでは、`runtime-dom/index.ts`で renderer を完成させましょう。
+
+```ts
+import { createRenderer } from "../runtime-core";
+import { nodeOps } from "./nodeOps";
+
+const { render } = createRenderer(nodeOps);
+```
+
+これで renderer 部分のリファクタは終わりです。
+
+#### DI と DIP
+
+renderer の設計を見てみました。改めて整理をしておくと、
+
+- runtime-core/renderer に renderer を生成するファクトリ関数を実装
+- runtime-dom/nodeOps に DOM に依存するオペレーション(操作)をするためのオブジェクトを実装
+- runtime-dom/index にてファクトリ関数と nodeOps を組み合わせて renderer を生成
+
+といった感じでした。  
+一般的にはこのような設計を 「DIP」 を利用した 「DI」 と言います。  
+まず、DIP についてですが、DIP(Dependency inversion principle)インターフェースを実装することにより、依存性の逆転を行います。  
+注目するべきところは、renderer.ts に実装した`RendererOptions`というい interface です。  
+ファクトリ関数も、nodeOps もこの`RendererOptions`を守るように実装します。(RendererOptions というインターフェースに依存させる)  
+これを利用して DI を行います。DI (Dependency Injection)はあるオブジェクトが依存しているあるオブジェクトを外から注入することによって依存度を下げるテクニックです。  
+今回のケースでいうと、renderer は RendererOptions(を実装したオブジェクト(今回でいえば nodeOps))に依存しています。  
+この依存性を renderer から直接呼び出して実装するのはやめて、ファクトリの引数として受け取る(外から注入する)ようにしています。  
+これらのテクニックによって renderer が DOM に依存しないような工夫をとっています。
+
+DI と DIP は慣れていないと難しい概念かもしれませんが、よく出てくる重要なテクニックなので各自で調べてもらったりして理解していただけると幸いです。
