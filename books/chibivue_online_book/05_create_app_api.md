@@ -144,6 +144,10 @@ app.mount("#app");
 
 ![hello_createApp](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/hello_createApp.png)
 
+ここまでのソースコード
+
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/02-1_create_app
+
 ## リファクタリング
 
 「え？まだこれだけしか実装していないのにリファクタするの?」と思うかもしれませんが、この本の目的の一つに「Vue.js のソースコードを読めるようになる」というものがありました。  
@@ -311,3 +315,76 @@ renderer の設計を見てみました。改めて整理をしておくと、
 これらのテクニックによって renderer が DOM に依存しないような工夫をとっています。
 
 DI と DIP は慣れていないと難しい概念かもしれませんが、よく出てくる重要なテクニックなので各自で調べてもらったりして理解していただけると幸いです。
+
+### createApp を完成させる
+
+実装に話を戻して、renderer が生成できたのであとは以下の図の赤い領域について考えれば良いです。
+
+![refactor_createApp_createApp](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/refactor_createApp_createApp.png)
+
+と、いってもやることは単純で、createApp のファクトリ関数に先ほど作った renderer を渡せるように実装すれば良いだけです。
+
+```ts
+// ~/packages/runtime-core apiCreateApp.ts
+
+import { Component } from "./component";
+import { RootRenderFunction } from "./renderer";
+
+export interface App<HostElement = any> {
+  mount(rootContainer: HostElement | string): void;
+}
+
+export type CreateAppFunction<HostElement> = (
+  rootComponent: Component
+) => App<HostElement>;
+
+export function createAppAPI<HostElement>(
+  render: RootRenderFunction<HostElement>
+): CreateAppFunction<HostElement> {
+  return function createApp(rootComponent) {
+    const app: App = {
+      mount(rootContainer: HostElement) {
+        const message = rootComponent.render!();
+        render(message, rootContainer);
+      },
+    };
+
+    return app;
+  };
+}
+```
+
+```ts
+// ~/packages/runtime-dom/index.ts
+
+import {
+  CreateAppFunction,
+  createAppAPI,
+  createRenderer,
+} from "../runtime-core";
+import { nodeOps } from "./nodeOps";
+
+const { render } = createRenderer(nodeOps);
+const _createApp = createAppAPI(render);
+
+export const createApp = ((...args) => {
+  const app = _createApp(...args);
+  const { mount } = app;
+  app.mount = (selector: string) => {
+    const container = document.querySelector(selector);
+    if (!container) return;
+    mount(container);
+  };
+
+  return app;
+}) as CreateAppFunction<Element>;
+```
+
+多少`~/packages/runtime-core/component.ts`とうに型を移動してますが、その辺はあまり重要ではないのでソースコードを参照してもらえればと思います。(本家 Vue.js に合わせているだけです。)
+
+だいぶ本家 Vue.js のソースコードに近づいたところで動作確認をしてみましょう。変わらずメッセージが表示されていれば OK です。
+
+
+ここまでのソースコード
+
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/02-2_create_app
