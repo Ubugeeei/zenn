@@ -7,8 +7,9 @@ chapters:
   - 03_vue_core_components
   - 04_setup_project
   - 05_create_app_api
-  - 06_minimum_reactive
-  - 07_root_component
-  - 08_minimum_virtual_dom
-  - 09_minimum_compiler
-  - 10_break
+  - 06_simple_h_function
+  - 07_minimum_reactive
+  - 08_root_component
+  - 09_minimum_virtual_dom
+  - 10_minimum_compiler
+  - 11_break
