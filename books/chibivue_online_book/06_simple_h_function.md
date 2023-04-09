@@ -315,3 +315,134 @@ export const nodeOps: Omit<RendererOptions, "patchProp"> = {
 ```ts
 const { render } = createRenderer({ ...nodeOps, patchProp });
 ```
+
+## イベントハンドラ
+
+patchEvent を実装します。
+
+```sh
+pwd # ~
+mkdir packages/runtime-dom/modules
+touch packages/runtime-dom/modules/events.ts
+```
+
+events.ts を実装します。
+
+```ts
+interface Invoker extends EventListener {
+  value: EventValue;
+}
+
+type EventValue = Function;
+
+export function addEventListener(
+  el: Element,
+  event: string,
+  handler: EventListener
+) {
+  el.addEventListener(event, handler);
+}
+
+export function patchEvent(
+  el: Element & { _vei?: Record<string, Invoker | undefined> },
+  rawName: string,
+  value: EventValue | null
+) {
+  const name = parseName(rawName);
+
+  if (value) {
+    const invoker = createInvoker(value);
+    addEventListener(el, name, invoker);
+  }
+}
+
+function parseName(rowName: string): string {
+  return rowName.slice(2).toLocaleLowerCase();
+}
+
+function createInvoker(initialValue: EventValue) {
+  const invoker: Invoker = (e: Event) => {
+    invoker.value(e);
+  };
+  invoker.value = initialValue;
+  return invoker;
+}
+```
+
+少し大きいですが、分割すればとても単純なことです。
+
+addEventListener は名前の通り、ただイベントのリスナーを登録するための関数です。  
+本当は然るべきタイミング remove する必要があるのですが、ここでは一旦気にしないことにします。
+
+patchEvent では invoker という関数でラップしてリスナーを登録しています。  
+parseName に関しては、単純に props のキー名は`onClick`や`onInput`のようになっているので、それらを on を除いた小文字に変換しているだけです。(eg. click, input)
+
+あとは patchProps に組み込んで renderVNode で使ってみましょう。
+
+patchProps
+
+```ts
+export const patchProp: DOMRendererOptions["patchProp"] = (el, key, value) => {
+  if (key === "style") {
+    // patchStyle(el, value); // これから実装します
+  } else if (isOn(key)) {
+    patchEvent(el, key, value);
+  } else {
+    // patchAttr(el, key, value); // これから実装します
+  }
+};
+```
+
+runtime-core/renderer.ts の renderVNode
+
+```ts
+  const {
+    patchProp: hostPatchProp,
+    createElement: hostCreateElement,
+    createText: hostCreateText,
+    insert: hostInsert,
+  } = options;
+  .
+  .
+  .
+  function renderVNode(vnode: VNode | string) {
+    if (typeof vnode === "string") return hostCreateText(vnode);
+    const el = hostCreateElement(vnode.type);
+
+    // ここ
+    Object.entries(vnode.props).forEach(([key, value]) => {
+      hostPatchProp(el, key, value);
+    });
+    .
+    .
+    .
+```
+
+さて、playground で動かしてみましょう。簡単にアラートを表示してみようと思います。
+
+```ts
+import { createApp, h } from "chibivue";
+
+const app = createApp({
+  render() {
+    return h("div", {}, [
+      h("p", {}, ["Hello world."]),
+      h(
+        "button",
+        {
+          onClick() {
+            alert("Hello world!");
+          },
+        },
+        ["click me!"]
+      ),
+    ]);
+  },
+});
+
+app.mount("#app");
+```
+
+h 関数でイベントハンドラを登録できるようになりました!
+
+![simple_h_function_event](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/simple_h_function_event.png)
