@@ -189,7 +189,7 @@ export function createRenderer(options: RendererOptions) {
 }
 ```
 
-runtime-domのnodeOps の方でも実際の DOM のオペレーションを定義してあげます。
+runtime-dom の nodeOps の方でも実際の DOM のオペレーションを定義してあげます。
 
 ```ts
 export const nodeOps: RendererOptions<Node> = {
@@ -235,3 +235,83 @@ app.mount("#app");
 やった! h 関数でいろんなタグを描画できるようになった!
 
 ![](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/simple_h_function.png)
+
+# 表示するだけでは寂しいので
+
+せっかくなので props の実装をしてクリックイベントや style を使えるようにしてみます。
+
+この部分について、直接 renderVNode に実装してしまってもいいのですが、本家に倣った設計も考慮しつつ進めてみようかと思います。
+
+本家 Vue.js の runtime-dom ディテクトリに注目してください。
+
+https://github.com/vuejs/core/tree/main/packages/runtime-dom/src
+
+特に注目して欲しいのは modules というディレクトリと patchProp.ts というファイルです。
+
+modules の中には class や style, その他 props の操作をするためのファイルが実装されています。
+https://github.com/vuejs/core/tree/main/packages/runtime-dom/src/modules
+
+それらをそれらを patchProp という関数にまとめているのが patchProp.ts で、これを nodeOps に混ぜ込んでいます。
+
+言葉で説明するのも何なので、実際にこの設計に基づいてやってみようと思います。
+
+## patchProps のガワを作成
+
+まずガワから作ります。
+
+```sh
+pwd # ~
+touch runtime-dom/patchProp.ts
+```
+
+`runtime-dom/patchProp.ts` の内容
+
+```ts
+type DOMRendererOptions = RendererOptions<Node, Element>;
+
+const onRE = /^on[^a-z]/;
+export const isOn = (key: string) => onRE.test(key);
+
+export const patchProp: DOMRendererOptions["patchProp"] = (el, key, value) => {
+  if (key === "style") {
+    // patchStyle(el, value); // これから実装します
+  } else if (isOn(key)) {
+    // patchEvent(el, key, value); // これから実装します
+  } else {
+    // patchAttr(el, key, value); // これから実装します
+  }
+};
+```
+
+`RendererOptions`に patchProp の型がないので定義します。
+
+```ts
+export interface RendererOptions<
+  HostNode = RendererNode,
+  HostElement = RendererElement
+> {
+  // 追加
+  patchProp(el: HostElement, key: string, value: any): void;
+  .
+  .
+  .
+```
+
+それに伴って、nodeOps では patchProps 以外の部分をしようするように書き換えます。
+
+```ts
+// patchPropをomitする
+export const nodeOps: Omit<RendererOptions, "patchProp"> = {
+  createElement: (tagName) => {
+    return document.createElement(tagName);
+  },
+  .
+  .
+  .
+```
+
+そして、`runtime-dom/index`の renderer を生成する際に patchProp も一緒に渡すように変更します
+
+```ts
+const { render } = createRenderer({ ...nodeOps, patchProp });
+```
