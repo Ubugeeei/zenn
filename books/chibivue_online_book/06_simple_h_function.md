@@ -273,9 +273,7 @@ const onRE = /^on[^a-z]/;
 export const isOn = (key: string) => onRE.test(key);
 
 export const patchProp: DOMRendererOptions["patchProp"] = (el, key, value) => {
-  if (key === "style") {
-    // patchStyle(el, value); // これから実装します
-  } else if (isOn(key)) {
+  if (isOn(key)) {
     // patchEvent(el, key, value); // これから実装します
   } else {
     // patchAttr(el, key, value); // これから実装します
@@ -383,9 +381,7 @@ patchProps
 
 ```ts
 export const patchProp: DOMRendererOptions["patchProp"] = (el, key, value) => {
-  if (key === "style") {
-    // patchStyle(el, value); // これから実装します
-  } else if (isOn(key)) {
+  if (isOn(key)) {
     patchEvent(el, key, value);
   } else {
     // patchAttr(el, key, value); // これから実装します
@@ -446,3 +442,37 @@ app.mount("#app");
 h 関数でイベントハンドラを登録できるようになりました!
 
 ![simple_h_function_event](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/simple_h_function_event.png)
+
+## 他の Props にも対応してみる。
+
+あとは同じようなことを setAttribute でやるだけです。  
+これは modules/attrs.ts に実装します。  
+ここはぜひみなさんでやってみてください。答えは最後にこのチャプターのソースコードを添付するのでそこで確認してみてください。  
+これくらいのコードが動くようになればゴールです。
+
+```ts
+import { createApp, h } from "chibivue";
+
+const app = createApp({
+  render() {
+    return h("div", { id: "my-app" }, [
+      h("p", { style: "color: red; font-weight: bold;" }, ["Hello world."]),
+      h(
+        "button",
+        {
+          onClick() {
+            alert("Hello world!");
+          },
+        },
+        ["click me!"]
+      ),
+    ]);
+  },
+});
+
+app.mount("#app");
+```
+
+![simple_h_function_attr](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/simple_h_function_attr.png)
+
+これでかなりの HTML に対応することができました!
