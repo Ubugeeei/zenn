@@ -283,7 +283,7 @@ Proxy とオブザーバパターンを用いた実装の流れについて説�
 まず、Vue.js のリアクティブシステムには `target`, `Proxy`, `ReactiveEffect`, `Dep`, `track`, `trigger`, `targetMap`, `activeEffect`というものが登場します。
 
 まず、targetMap の構造についてです。  
-targetMap はある target の key と dep のマップングです。  
+targetMap はある target の key と dep のマッピングです。  
 target というのはリアクティブにしたいオブジェクト、dep というのは実行したい作用(関数)だと思ってもらえれば大丈夫です。  
 コードで表すとこういう感じになります。
 
@@ -516,8 +516,8 @@ function render() {
 effect.run();
 ```
 
-そうすると、今、`activeEffect` には `updateComponent` が設定されています。  
-この状態で `track` が走るので、`targetMap` に `state`.count と `updateComponent` のマップが登録されます。  
+そうすると、まず `activeEffect` に `updateComponent` が設定されます。  
+この状態で `track` が走るので、`targetMap` に `state.count` と `updateComponent` のマップが登録されます。  
 これがリアクティブの形成です。
 
 ここで、increment が実行された時のことを考えてみましょう。  
@@ -525,7 +525,7 @@ increment では `state.count` を書き換えているので `setter` が実行
 `trigger` は `state` と `count` を元に `targetMap` から `effect`(今回の例だと updateComponent)をみつけ、実行します。
 これで画面の更新が行われるようになりました!
 
-これによって、以下のようにリアクティブを実現することができます。
+これによって、リアクティブを実現することができます。
 
 ちょっとややこしいので図でまとめます。
 
