@@ -291,7 +291,7 @@ target というのはリアクティブにしたいオブジェクト、dep と
 type Target = any; // 任意のtarget
 type TargetKey = any; // targetが持つ任意のkey
 
-const targetMap = WeakMap<Target, KeyToDepMap>; // このモジュール内のグローバル変数として定義
+const targetMap = new WeakMap<Target, KeyToDepMap>(); // このモジュール内のグローバル変数として定義
 
 type KeyToDepMap = Map<TargetKey, Dep>; // targetのkeyと作用のマップ
 
@@ -319,28 +319,6 @@ export function trigger(target: object, key?: unknown) {
   // ..
 }
 ```
-
-ここで、一つ足りない要素について気づくかもしれません。それは「track ではどの関数を登録するの?」という点です。
-答えを言ってしまうと、これが `activeEffect` という概念です。
-これは、targetMap と同様、このモジュール内のグローバル変数として定義されていて、ReactiveEffect の`run`というメソッドで随時設定されます。
-
-```ts
-let activeEffect: ReactiveEffect | undefined;
-
-class ReactiveEffect {
-  constructor(
-    // ここに実際に作用させたい関数を持たせます。 (今回でいうと、updateComponent)
-    public fn: () => T
-  ) {}
-
-  run() {
-    activeEffect = this;
-    return this.fn();
-  }
-}
-```
-
-これにより、targetMap に作用を登録しています。
 
 そして、この track と trigger は Proxy の get と set のハンドラに実装されます。
 
@@ -381,22 +359,109 @@ function reactive<T>(target: T) {
 
 ![reactive](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/reactive.png)
 
-<!-- これによって、以下のようにリアクティブを実現することができます。
+これらは先ほど説明したオブザーバパターンの応用です。このクラスを思い出してください。
 
 ```ts
-// 開発者インターフェース
-{
-  setup() {
-    const state = reactive({ count:0 });
-    const increment = () => {
-      state.count++;
-    };
+class S implements Subject {
+  private observers: Observer[] = [];
+
+  observe(obs: Observer) {
+    this.observers.push(obs);
+  }
+
+  forget() {
+    this.observers = this.observers.filter((it) => it !== obs);
+  }
+
+  notify() {
+    this.observers.forEach((it) => it.update());
   }
 }
 ```
--->
 
-<!--
+少しこのクラスを元に置き換えてみましょう。
+この class でいうところの observers が Dep に当たります。
+ですが、この Dep の構造は少し複雑で、あるオブジェクトに対して、key ごとに Dep を分けています。
+つまり、observers は targetMap です。
+
+```ts
+class S implements Subject {
+  private targetMap = new WeekMap<Target, KeyToDepMap>();
+
+  observe(obs: Observer) {
+    //
+  }
+
+  forget() {
+    //
+  }
+
+  notify() {
+    //
+  }
+}
+```
+
+![reactive_observer](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/reactive_observer.png)
+
+observe と notify が track と trigger にあたります。forget はありません。
+
+```ts
+class S implements Subject {
+  private targetMap = new WeekMap<Target, KeyToDepMap>();
+
+  track(target, key, effect: ???) {}
+
+  trigger(target, key) {}
+}
+```
+
+ここで、一つ足りない要素について気づくかもしれません。それは「track ではどの関数を登録するの?」という点です。
+答えを言ってしまうと、これが `activeEffect` という概念です。
+これは、targetMap と同様、このモジュール内のグローバル変数として定義されていて、ReactiveEffect の`run`というメソッドで随時設定されます。
+
+```ts
+let activeEffect: ReactiveEffect | undefined;
+
+class ReactiveEffect {
+  constructor(
+    // ここに実際に作用させたい関数を持たせます。 (今回でいうと、updateComponent)
+    public fn: () => T
+  ) {}
+
+  run() {
+    activeEffect = this;
+    return this.fn();
+  }
+}
+```
+
+どういう原理かというと、このようなコンポーネントを想像してください。
+
+```ts
+{
+  setup() {
+    const state = reactive({ count: 0 });
+    const increment = () => state.count++;
+
+    return function render() {
+      return h("div", { id: "my-app" }, [
+        h("p", {}, [`count: ${state.count}`]),
+        h(
+          "button",
+          {
+            onClick: increment,
+          },
+          ["increment"]
+        ),
+      ]);
+    };
+  },
+}
+```
+
+これを、内部的には以下のようにリアクティブを形成します。
+
 ```ts
 // chibivue 内部実装
 const app: App = {
@@ -412,4 +477,56 @@ const app: App = {
     effect.run();
   },
 };
-``` -->
+```
+
+順を追って説明すると、まず、`setup` 関数が実行されます。
+この時点で reactive proxy が生成されます。つまり、ここで作られた proxy に対してこれから何か操作があると proxy で設定した通り動作をとります。
+
+```ts
+const state = reactive({ count: 0 }); // proxyの生成
+```
+
+次に、`updateComponent` を渡して `ReactiveEffect` (Observer 側)を生成します。
+
+```ts
+const effect = new ReactiveEffect(updateComponent);
+```
+
+この `updateComponent` で使っている `componentRender` は `setup` の`戻り値`の関数です。そしてこの関数は proxy によって作られたオブジェクトを参照しています。
+
+```ts
+function render() {
+  return h("div", { id: "my-app" }, [
+    h("p", {}, [`count: ${state.count}`]), // proxy によって作られたオブジェクトを参照している
+    h(
+      "button",
+      {
+        onClick: increment,
+      },
+      ["increment"]
+    ),
+  ]);
+}
+```
+
+実際にこの関数が走った時、`state.count` の `getter` 関数が実行され、`track` が実行されるようになっています。  
+この状況下で、effect を実行してみます。
+
+```ts
+effect.run();
+```
+
+そうすると、今、`activeEffect` には `updateComponent` が設定されています。  
+この状態で `track` が走るので、`targetMap` に `state`.count と `updateComponent` のマップが登録されます。  
+これがリアクティブの形成です。
+
+ここで、increment が実行された時のことを考えてみましょう。  
+increment では `state.count` を書き換えているので `setter` が実行され、`trigger` が実行されます。  
+`trigger` は `state` と `count` を元に `targetMap` から `effect`(今回の例だと updateComponent)をみつけ、実行します。
+これで画面の更新が行われるようになりました!
+
+これによって、以下のようにリアクティブを実現することができます。
+
+ちょっとややこしいので図でまとめます。
+
+![reactivity_create](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/reactivity_create.png)
