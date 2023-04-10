@@ -278,78 +278,138 @@ sub.notify(); // 通知
 ## Proxy とオブザーバパターンでリアクティブシステムを実装してみる
 
 改めて目的を明確にしておくと、今回の目的は「ステートが変更された時に`updateComponent`を実行したい」です。  
-Proxy とオブザーバパターンを用いた実装の流れについて説明してみます。  
-これを思い出してください。
+Proxy とオブザーバパターンを用いた実装の流れについて説明してみます。
+
+まず、Vue.js のリアクティブシステムには `target`, `Proxy`, `ReactiveEffect`, `Dep`, `track`, `trigger`, `targetMap`, `activeEffect`というものが登場します。
+
+まず、targetMap の構造についてです。  
+targetMap はある target の key と dep のマップングです。  
+target というのはリアクティブにしたいオブジェクト、dep というのは実行したい作用(関数)だと思ってもらえれば大丈夫です。  
+コードで表すとこういう感じになります。
 
 ```ts
-const obs = new O();
-const sub = new S();
+type Target = any; // 任意のtarget
+type TargetKey = any; // targetが持つ任意のkey
 
-sub.observe(obs);
+const targetMap = WeakMap<Target, KeyToDepMap>; // このモジュール内のグローバル変数として定義
 
-sub.notify(); // 通知
-```
+type KeyToDepMap = Map<TargetKey, Dep>; // targetのkeyと作用のマップ
 
-obs(observer)はイベントを通知される側で、sub(subject)はイベントを通知する側でした。
-
-<!-- TODO:Ï -->
-
-<!-- TODO:Ï 図を載せる -->
-
-```ts
-export type Dep = Set<ReactiveEffect>;
-
-export let activeEffect: ReactiveEffect | undefined;
-
-const targetMap = new WeakMap<any, Dep>();
+type Dep = Set<ReactiveEffect>; // depはReactiveEffectというものを複数持っている
 
 class ReactiveEffect {
-  private deps: Dep[] = [];
-  constructor(public fn: () => T) {}
+  constructor(
+    // ここに実際に作用させたい関数を持たせます。 (今回でいうと、updateComponent)
+    public fn: () => T
+  ) {}
+}
+```
+
+基本的な構造はこれが担っていて、あとはこの TargetMap をどう作っていくか(どう登録していくか)と実際に作用を実行するにはどうするかということを考えます。
+
+そこで登場する概念が track と trigger です。
+それぞれ名前の通り、track は TargetMap に登録する関数、trigger は TargetMap から作用を取り出して実行する関数です。
+
+```ts
+export function track(target: object, key: unknown) {
+  // ..
+}
+
+export function trigger(target: object, key?: unknown) {
+  // ..
+}
+```
+
+ここで、一つ足りない要素について気づくかもしれません。それは「track ではどの関数を登録するの?」という点です。
+答えを言ってしまうと、これが `activeEffect` という概念です。
+これは、targetMap と同様、このモジュール内のグローバル変数として定義されていて、ReactiveEffect の`run`というメソッドで随時設定されます。
+
+```ts
+let activeEffect: ReactiveEffect | undefined;
+
+class ReactiveEffect {
+  constructor(
+    // ここに実際に作用させたい関数を持たせます。 (今回でいうと、updateComponent)
+    public fn: () => T
+  ) {}
+
   run() {
+    activeEffect = this;
     return this.fn();
   }
 }
-
-function track(target: object) {
-  let dep = targetMap.get(target);
-  if (!dep) {
-    targetMap.set(target, (dep = new Set()));
-  }
-
-  if (activeEffect) {
-    dep.add(activeEffect);
-    activeEffect.deps.push(dep);
-  }
-}
-
-function trigger(target: object) {
-  const dep = targetMap.get(target);
-
-  const effects = [...dep];
-
-  for (effect in effects) {
-    effect.run();
-  }
-}
 ```
 
-そしてこの track と trigger が実行されるタイミングですが、track はステートの読み取り時, trigger はステートの更新時に実行されます。
-つまり Proxy で getter と setter を定義します。
+これにより、targetMap に作用を登録しています。
+
+そして、この track と trigger は Proxy の get と set のハンドラに実装されます。
 
 ```ts
 const state = new Proxy(
-  { count: 0 },
+  { count: 1 },
   {
     get(target, key, receiver) {
-      track(target);
+      track(target, key);
       return target[key];
     },
-    set(target, key, value receiver) {
+    set(target, key, value, receiver) {
       target[key] = value;
-      trigger(target);
+      trigger(target, key);
       return true;
     },
   }
 );
 ```
+
+この Proxy 生成のための API が reactive 関数です。
+
+```ts
+function reactive<T>(target: T) {
+  return new Proxy(target, {
+    get(target, key, receiver) {
+      track(target, key);
+      return target[key];
+    },
+    set(target, key, value, receiver) {
+      target[key] = value;
+      trigger(target, key);
+      return true;
+    },
+  });
+}
+```
+
+![reactive](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/reactive.png)
+
+<!-- これによって、以下のようにリアクティブを実現することができます。
+
+```ts
+// 開発者インターフェース
+{
+  setup() {
+    const state = reactive({ count:0 });
+    const increment = () => {
+      state.count++;
+    };
+  }
+}
+```
+-->
+
+<!--
+```ts
+// chibivue 内部実装
+const app: App = {
+  mount(rootContainer: HostElement) {
+    const componentRender = rootComponent.setup!();
+
+    const updateComponent = () => {
+      const vnode = componentRender();
+      render(vnode, rootContainer);
+    };
+
+    const effect = new ReactiveEffect(updateComponent);
+    effect.run();
+  },
+};
+``` -->
