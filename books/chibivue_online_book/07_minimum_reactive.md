@@ -275,7 +275,7 @@ sub.notify(); // 通知
 
 わざわざこんなもの何に使うの? という感じがするかもしれませんが、とりあえずこれがオブザーバパターンだと思ってください。
 
-## Proxy とオブザーバパターンでリアクティブシステムを実装してみる
+## Proxy とオブザーバパターンでリアクティブシステムを実現してみる
 
 改めて目的を明確にしておくと、今回の目的は「ステートが変更された時に`updateComponent`を実行したい」です。  
 Proxy とオブザーバパターンを用いた実装の流れについて説明してみます。
@@ -530,3 +530,230 @@ increment では `state.count` を書き換えているので `setter` が実行
 ちょっとややこしいので図でまとめます。
 
 ![reactivity_create](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/reactivity_create.png)
+
+# これらを踏まえて実装しよう
+
+一番難しいところは上記までの理解なので、理解ができればあとはソースコードを書くだけです。  
+とは言っても、実際のところどうなってるのかよく分からず上記だけでは理解ができない方もいるでしょう。  
+そんな方も一旦ここで実装してみましょう。それから実際のコードを読みながら先ほどのセクションを見返してもらえてらと思います!
+
+まずは必要なファイルを作ります。`packages/reactivity`に作っていきます。
+ここでも本家 Vue の構成をなるべく意識します。˝
+
+```sh
+pwd # ~
+mkdir packages/reactivity
+
+touch packages/reactivity/index.ts
+
+touch packages/reactivity/dep.ts
+touch packages/reactivity/effect.ts
+touch packages/reactivity/reactive.ts
+touch packages/reactivity/baseHandler.ts
+```
+
+例の如く、index.ts は export しているだけなので特に説明はしません。reactivity 外部パッケージから使いたくなったものはここから export しましょう。
+
+deps.ts からです。
+
+```ts
+import { type ReactiveEffect } from "./effect";
+
+export type Dep = Set<ReactiveEffect>;
+
+export const createDep = (effects?: ReactiveEffect[]): Dep => {
+  const dep: Dep = new Set<ReactiveEffect>(effects);
+  return dep;
+};
+```
+
+effect の定義がないですがこれから実装するので Ok です。
+
+続いて effect.ts です。
+
+```ts
+import { Dep, createDep } from "./dep";
+
+type KeyToDepMap = Map<any, Dep>;
+const targetMap = new WeakMap<any, KeyToDepMap>();
+
+export let activeEffect: ReactiveEffect | undefined;
+
+export class ReactiveEffect<T = any> {
+  public deps: Dep[] = [];
+  constructor(public fn: () => T) {}
+
+  run() {
+    activeEffect = this;
+    return this.fn();
+  }
+}
+
+export function track(target: object, key: unknown) {
+  let depsMap = targetMap.get(target);
+  if (!depsMap) {
+    targetMap.set(target, (depsMap = new Map()));
+  }
+
+  let dep = depsMap.get(key);
+  if (!dep) {
+    depsMap.set(key, (dep = createDep()));
+  }
+
+  if (activeEffect) {
+    dep.add(activeEffect);
+    activeEffect.deps.push(dep);
+  }
+}
+
+export function trigger(target: object, key?: unknown) {
+  const depsMap = targetMap.get(target);
+  if (!depsMap) return;
+
+  const dep = depsMap.get(key);
+
+  if (dep) {
+    const effects = [...dep];
+    for (const effect of effects) {
+      effect.run();
+    }
+  }
+}
+```
+
+track と trigger の中身についてこれまで解説していないのですが、単純に targetMap に登録をしたり取り出して実行したりしているだけなので頑張って読んでみてください。
+
+続いて baseHandler.ts です。ここには reactive proxy のハンドラを定義します。  
+まあ、reactive に直接実装してもいいのですが、本家がこうなっているので真似してみました。  
+実際には readonly や shallow などさまざまなプロキシが存在するのでそれらのハンドラをここに実装するイメージです。(今回はやりませんが)
+
+```ts
+import { track, trigger } from "./effect";
+
+export const mutableHandlers: ProxyHandler<object> = {
+  get(target: object, key: string | symbol, receiver: object) {
+    track(target, key);
+    return Reflect.get(target, key, receiver);
+  },
+
+  set(target: object, key: string | symbol, value: unknown, receiver: object) {
+    Reflect.set(target, key, value, receiver);
+    trigger(target, key);
+    return true;
+  },
+};
+```
+
+ここで、Reflect というものが登場していますが、Proxy と似た雰囲気のものなんですが、Proxy があるオブジェクトに対する設定を書き込む処理だったのに対し、Reflect はあるオブジェクトに対する処理を行うものです。Proxy も Reflect も JS エンジン内のオブジェクトにまつわる処理の API で、普通にオブジェクトを使うのと比べてメタなプログラミングを行うことができます。  
+正確には処理を行うものというより、リフレクションという概念があってこれはある対象に対するメタ情報を取得するのによく使われます。  
+そのオブジェクトを変化させる関数を実行したり、読み取る関数を実行しり、key が存在するのかをチェクしたりさまざまなメタ操作ができます。
+
+別に、
+
+```ts
+Reflect.get(target, key, receiver);
+```
+
+は
+
+```ts
+target[key];
+```
+
+と書いても動くのですが、Proxy とよく似た API の構造を持っていて、メソッドが対になっていることからよく組合せて使われます。  
+まあ、細かいことは気にせず本家も Reflect を利用してるのでここは Reflect を使ってみます。
+
+とりあえず、Proxy = オブジェクトを作る段階でのメタ設定, Reflect = 既に存在しているオブジェクトに対するメタ操作くらいの理解があれば OK です。
+
+続いて reactive.ts です。
+
+```ts
+import { mutableHandlers } from "./baseHandler";
+
+export function reactive<T extends object>(target: T): T {
+  const proxy = new Proxy(target, mutableHandlers);
+  return proxy as T;
+}
+```
+
+これで reactive 部分の実装は終わりなので、mount する際に実際にこれらを使ってみましょう。  
+`~/packages/runtime-core/apiCreateApp.ts`です。
+
+```ts
+import { ReactiveEffect } from "../reactivity";
+
+export function createAppAPI<HostElement>(
+  render: RootRenderFunction<HostElement>
+): CreateAppFunction<HostElement> {
+  return function createApp(rootComponent) {
+    const app: App = {
+      mount(rootContainer: HostElement) {
+        const componentRender = rootComponent.setup!();
+
+        const updateComponent = () => {
+          const vnode = componentRender();
+          render(vnode, rootContainer);
+        };
+
+        // ここから
+        const effect = new ReactiveEffect(updateComponent);
+        effect.run();
+        // ここまで
+      },
+    };
+
+    return app;
+  };
+}
+```
+
+さて、あとは playground で試してみましょう。
+
+```ts
+import { createApp, h, reactive } from "chibivue";
+
+const app = createApp({
+  setup() {
+    const state = reactive({ count: 0 });
+    const increment = () => {
+      state.count++;
+    };
+
+    return function render() {
+      return h("div", { id: "my-app" }, [
+        h("p", {}, [`count: ${state.count}`]),
+        h("button", { onClick: increment }, ["increment"]),
+      ]);
+    };
+  },
+});
+
+app.mount("#app");
+```
+
+![reactive_example_mistake](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/reactive_example_mistake.png)
+
+あっ・・・・
+
+ちゃんとレンダリングはされるようになりましたが何やら様子がおかしいです。
+まぁ、無理もなくて、`updateComponent`では毎回要素を作っています。
+なので、2 回目以降のレンダリングの際に古いものはそのままで、新しく要素が作られてしまっているのです。
+なので、レンダリング前に毎回要素を全て消してあげましょう。
+
+`~/packages/runtime-core/renderer.ts`の render 関数をいじります。
+
+```ts
+const render: RootRenderFunction = (vnode, container) => {
+  while (container.firstChild) container.removeChild(container.firstChild); // 全消し処理を追加
+  const el = renderVNode(vnode);
+  hostInsert(el, container);
+};
+```
+
+さてこれでどうでしょう。
+
+![reactive_example](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/reactive_example.png)
+
+今度は大丈夫そうです!
+
+これで reactive に画面を更新できるようになりました！！
