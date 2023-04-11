@@ -9,7 +9,6 @@ chapters:
   - 05_create_app_api
   - 06_simple_h_function
   - 07_minimum_reactive
-  - 08_root_component
-  - 09_minimum_virtual_dom
-  - 10_minimum_compiler
-  - 11_break
+  - 08_minimum_virtual_dom
+  - 09_minimum_compiler
+  - 10_break
