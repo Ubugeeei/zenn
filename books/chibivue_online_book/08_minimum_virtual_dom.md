@@ -97,6 +97,96 @@ patch(vnode, nextVnode, container)
 先に関数名を紹介してしまいましたが、この差分レンダリングは「パッチ」と呼ばれます。差分検出処理 (reconciliation)と呼ばれることもあるようです。
 このように 2 つの仮想 DOM を利用することで効率的に画面の更新を行うことができます。
 
+# patch 関数の実装を行う前に
+
+これまで、VNode が持つ小要素の型は`(Vnode | string)[]`としてきたのですが、Text を文字列として扱い続けるのもなんなので、VNode に統一してみようと思います。
+Text も実際にはただの文字列ではなく、HTML の TextElement として存在するので、文字列以上の情報を含みます。それらの周辺情報を扱うためにも VNode として扱いたいわけです。
+具体的には、Text と言う Symbol を用いて、VNode の type として持たせましょう。
+
+`~/packages/runtime-core/vnode.ts`;
+
+```ts
+export type VNodeTypes = string | typeof Text;
+
+export const Text = Symbol();
+
+export interface VNode<HostNode = any> {
+  type: VNodeTypes;
+  props: VNodeProps | null;
+  children: VNodeNormalizedChildren;
+
+  el: HostNode | undefined;
+}
+
+export interface VNodeProps {
+  [key: string]: any;
+}
+
+export type VNodeNormalizedChildren = string | VNodeArrayChildren;
+
+export type VNodeChild = VNodeChildAtom | VNodeArrayChildren;
+
+export type VNodeArrayChildren = Array<VNodeArrayChildren | VNodeChildAtom>;
+
+type VNodeChildAtom = VNode | string;
+```
+
+少し長いですが、これで Text も VNode として扱えるようになりました。
+通常の HTML タグの場合はタグ名(string)を type に、TextElement の場合は Text を type に使用することにしましょう。
+そうすると Text の場合であっても VNode の情報量を持つことができます。
+
+どうファイルにこれを生成するための関数を実装し、h 関数に組み込みます。
+
+```ts
+export function createVNode(
+  type: VNodeTypes,
+  props: VNodeProps | null,
+  children: unknown
+): VNode {
+  const vnode: VNode = {
+    type,
+    props,
+    children: [],
+    el: undefined,
+  };
+
+  normalizeChildren(vnode, children);
+
+  return vnode;
+}
+
+function normalizeChildren(vnode: VNode, children: unknown) {
+  if (Array.isArray(children)) {
+    children = children.map((child) => {
+      if (typeof child === "string") {
+        return createTextVNode(child);
+      }
+      return child;
+    });
+  } else if (typeof children === "string") {
+    children = createTextVNode(children);
+  }
+
+  vnode.children = children as VNodeNormalizedChildren;
+}
+
+export function createTextVNode(text: string = " "): VNode {
+  return createVNode(Text, null, text);
+}
+```
+
+h 関数も変更
+
+```ts
+export function h(
+  type: string,
+  props: VNodeProps,
+  children: (VNode | string)[]
+) {
+  return createVNode(type, props, children);
+}
+```
+
 # patch 関数の設計
 
 まず、patch 関数でやりたいことは 2 つの vnode の比較なので、便宜上しぞれ vnode1, vnode2 とするのですが、初回は vnode1 がありません。
