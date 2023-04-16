@@ -36,7 +36,7 @@ const app = createApp({
 });
 ```
 
-何がまずいかというと、increment を実行した時に変化数部分は、``count: ${state.count}`の部分だけなのに、renderVNode では一度全ての DOM を削除し、1 から再生成しているのです。  
+何がまずいかというと、increment を実行した時に変化数部分は、`count: ${state.count}`の部分だけなのに、renderVNode では一度全ての DOM を削除し、1 から再生成しているのです。  
 これはなんとも無駄だらけな感じがしてなりません。今はまだ小さいので、これくらいでも特に問題なく動いているように見えますが、普段 Web アプリケーションを開発しているときような複雑な DOM を毎度毎度丸ごと作り替えるととんでもなくパフォーマンスが落ちてしまうのが容易に想像できると思います。  
 そこで、せっかく仮想 DOM を持っているわけですから、画面を描画する際に、前の仮想 DOM と比較して差分があったところだけを DOM 操作で書き換えるような実装をしたくなります。  
 さて、今回のメインテーマはこれです。
@@ -99,43 +99,8 @@ patch(vnode, nextVnode, container)
 
 # patch 関数の実装を行う前に
 
-これまで、VNode が持つ小要素の型は`(Vnode | string)[]`としてきたのですが、Text を文字列として扱い続けるのもなんなので、VNode に統一してみようと思います。
-Text も実際にはただの文字列ではなく、HTML の TextElement として存在するので、文字列以上の情報を含みます。それらの周辺情報を扱うためにも VNode として扱いたいわけです。
-具体的には、Text と言う Symbol を用いて、VNode の type として持たせましょう。
-
-`~/packages/runtime-core/vnode.ts`;
-
-```ts
-export type VNodeTypes = string | typeof Text;
-
-export const Text = Symbol();
-
-export interface VNode<HostNode = any> {
-  type: VNodeTypes;
-  props: VNodeProps | null;
-  children: VNodeNormalizedChildren;
-
-  el: HostNode | undefined;
-}
-
-export interface VNodeProps {
-  [key: string]: any;
-}
-
-export type VNodeNormalizedChildren = string | VNodeArrayChildren;
-
-export type VNodeChild = VNodeChildAtom | VNodeArrayChildren;
-
-export type VNodeArrayChildren = Array<VNodeArrayChildren | VNodeChildAtom>;
-
-type VNodeChildAtom = VNode | string;
-```
-
-少し長いですが、これで Text も VNode として扱えるようになりました。
-通常の HTML タグの場合はタグ名(string)を type に、TextElement の場合は Text を type に使用することにしましょう。
-そうすると Text の場合であっても VNode の情報量を持つことができます。
-
-どうファイルにこれを生成するための関数を実装し、h 関数に組み込みます。
+本筋とは関係ないのですが、ちょっとここらで軽いリファクタを行なっておきます。(今から話すことにとって都合がいいので)
+vnode.ts に createVNode と言う関数を作っておいて、h 関数からはそれを呼ぶようにしておきましょう。
 
 ```ts
 export function createVNode(
@@ -143,35 +108,8 @@ export function createVNode(
   props: VNodeProps | null,
   children: unknown
 ): VNode {
-  const vnode: VNode = {
-    type,
-    props,
-    children: [],
-    el: undefined,
-  };
-
-  normalizeChildren(vnode, children);
-
+  const vnode: VNode = { type, props, children: [] };
   return vnode;
-}
-
-function normalizeChildren(vnode: VNode, children: unknown) {
-  if (Array.isArray(children)) {
-    children = children.map((child) => {
-      if (typeof child === "string") {
-        return createTextVNode(child);
-      }
-      return child;
-    });
-  } else if (typeof children === "string") {
-    children = createTextVNode(children);
-  }
-
-  vnode.children = children as VNodeNormalizedChildren;
-}
-
-export function createTextVNode(text: string = " "): VNode {
-  return createVNode(Text, null, text);
 }
 ```
 
@@ -187,11 +125,70 @@ export function h(
 }
 ```
 
+ここからが本筋なのですが、これまで VNode が持つ小要素の型は`(Vnode | string)[]`としてきたのですが、Text を文字列として扱い続けるのもなんなので、VNode に統一してみようと思います。
+Text も実際にはただの文字列ではなく、HTML の TextElement として存在するので、文字列以上の情報を含みます。それらの周辺情報を扱うためにも VNode として扱いたいわけです。
+具体的には、Text と言う Symbol を用いて、VNode の type として持たせましょう。
+例えば、`"hello"`のようなテキストがあった時、
+
+```ts
+{
+  type: Text,
+  props: null,
+  children: "hello"
+}
+```
+
+としてあげる感じです。
+
+また、ここで一つ注意点なのは、h 関数を実行した時は従来通りの表現をして、上記のように Text を表現するのは、render 関数ないで normalize と言う関数を噛ませて変換することにします。  
+これは本家の Vue.js に合わせてそうすることにします。
+
+`~/packages/runtime-core/vnode.ts`;
+
+```ts
+export const Text = Symbol();
+
+export type VNodeTypes = string | typeof Text;
+
+export interface VNode<HostNode = any> {
+  type: VNodeTypes;
+  props: VNodeProps | null;
+  children: VNodeNormalizedChildren;
+}
+
+export interface VNodeProps {
+  [key: string]: any;
+}
+
+// normalize後の型
+export type VNodeNormalizedChildren = string | VNodeArrayChildren;
+export type VNodeArrayChildren = Array<VNodeArrayChildren | VNodeChildAtom>;
+
+export type VNodeChild = VNodeChildAtom | VNodeArrayChildren;
+type VNodeChildAtom = VNode | string;
+
+export function createVNode(..){..} // 省略
+
+// normalize 関数を実装。(renderer.tsで使う)
+export function normalizeVNode(child: VNodeChild): VNode {
+  if (typeof child === "object") {
+    return { ...child } as VNode;
+  } else {
+    // stringだった場合に先ほど紹介した扱いたい形に変換する
+    return createVNode(Text, null, String(child));
+  }
+}
+```
+
+これで Text も VNode として扱えるようになりました。
+
 # patch 関数の設計
 
-まず、patch 関数でやりたいことは 2 つの vnode の比較なので、便宜上しぞれ vnode1, vnode2 とするのですが、初回は vnode1 がありません。
-つまり、patch 関数での処理は「初回(vnode2 から dom を生成)」と、「vnode1 と vnode2 の差分を更新」の処理に分かれます。
-そしてそれらは ElementNode と TextNode それぞれで行うようにします。
+まず、patch 関数の設計をコードベースで見てみましょう。(実装フェーズはまた別であるのでここではまだ実装しなくていいです。理解だけ。)  
+patch 関数でやりたいことは 2 つの vnode の比較なので、便宜上しぞれ vnode1, vnode2 とするのですが、初回は vnode1 がありません。  
+つまり、patch 関数での処理は「初回(vnode2 から dom を生成)」と、「vnode1 と vnode2 の差分を更新」の処理に分かれます。  
+これらの処理をそれぞれ「mount」と「patch」と名付けることにします。  
+そしてそれらは ElementNode と TextNode それぞれで行うようにします。(それぞれの mount と patch を process と言う名前でまとめてます。)
 
 ```ts
 const patch = (
@@ -229,7 +226,8 @@ const processText = (n1: string | null, n2: string, container: HostElement) => {
 
 # 実際に実装してみる
 
-まず、 Element にに関してですが、マウントした段階で vnode に実際の DOM への参照を持たせておきたいので、vnode の el というプロパティを持たせておきます。
+ここから実際に仮想 DOM の patch を実装していきます。  
+まず、 Element にしろ、Text にしろ、マウントした段階で vnode に実際の DOM への参照を持たせておきたいので、vnode の el というプロパティを持たせておきます。
 
 `~/packages/runtime-core/vnode.ts`
 
@@ -299,7 +297,8 @@ const mountElement = (vnode: VNode, container: RendererElement) => {
 };
 ```
 
-要素なので、当然小要素のマウントも必要です。
+要素なので、当然子要素のマウントも必要です。
+ここで、先ほど作った normalize 関数を噛ませておきましょう。
 
 ```ts
 const mountChildren = (
@@ -307,13 +306,15 @@ const mountChildren = (
   container: RendererElement
 ) => {
   for (let i = 0; i < children.length; i++) {
-    patch(null, children[i], container);
+    const child = (children[i] = normalizeVNode(children[i]));
+    patch(null, child, container);
   }
 };
 ```
 
 ここまでで要素のマウントは実装できました。  
-次は Text のマウントからやりましょう。と、言ってもこちらはただ DOM 操作をするだけです。
+次は Text のマウントからやりましょう。と、言ってもこちらはただ DOM 操作をするだけです。  
+設計の説明では mountText と patchText のように関数に分けてましたが、たいした処理もなく、今後もそれほど複雑にならないはずなので直接書いてしまいます。
 
 ```ts
 const processText = (
@@ -321,12 +322,19 @@ const processText = (
   n2: string,
   container: RendererElement
 ) => {
-  container.textContent = n2;
+  if (n1 == null) {
+    hostInsert((n2.el = hostCreateText(n2.children as string)), container);
+  } else {
+    const el = (n2.el = n1.el!);
+    if (n2.children !== n1.children) {
+      hostSetText(el, n2.children as string);
+    }
+  }
 };
 ```
 
-一旦ここまでで、初回のマウントはできるようになったはずので、render 関数で patch 関数をしようして playground で試してみましょう。
-今まで、createAppAPI の mount に書いていた処理を一部 render 関数に移植して、２つの vnode を保持できるようにします。
+一旦ここまでで、初回のマウントはできるようになったはずので、render 関数で patch 関数をしようして playground で試してみましょう!  
+今まで、createAppAPI の mount に書いていた処理を一部 render 関数に移植して、２つの vnode を保持できるようにします。  
 具体的には。render 関数に rootComponent を渡して、その中で ReactiveEffect の登録等を行うように変更します。
 
 ```ts
@@ -380,11 +388,12 @@ const patchElement = (n1: VNode, n2: VNode) => {
 };
 
 const patchChildren = (n1: VNode, n2: VNode, container: RendererElement) => {
-  const c1 = n1 && n1.children;
-  const c2 = n2.children;
+  const c1 = n1.children as VNode[];
+  const c2 = n2.children as VNode[];
 
   for (let i = 0; i < c2.length; i++) {
-    patch(c1[i], c2[i], container);
+    const child = (c2[i] = normalizeVNode(c2[i]));
+    patch(c1[i], child, container);
   }
 };
 ```
