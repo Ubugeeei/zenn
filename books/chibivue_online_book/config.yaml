@@ -10,5 +10,6 @@ chapters:
   - 06_simple_h_function
   - 07_minimum_reactive
   - 08_minimum_virtual_dom
-  - 09_minimum_compiler
-  - 10_break
+  - 09_minimum_component
+  - 10_minimum_compiler
+  - 11_break
