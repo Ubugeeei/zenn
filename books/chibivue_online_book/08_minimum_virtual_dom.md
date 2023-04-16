@@ -36,7 +36,7 @@ const app = createApp({
 });
 ```
 
-何がまずいかというと、increment を実行した時に変化数部分は、`count: ${state.count}`の部分だけなのに、renderVNode では一度全ての DOM を削除し、1 から再生成しているのです。  
+何がまずいかというと、increment を実行した時に変化する部分は、`count: ${state.count}`の部分だけなのに、renderVNode では一度全ての DOM を削除し、1 から再生成しているのです。  
 これはなんとも無駄だらけな感じがしてなりません。今はまだ小さいので、これくらいでも特に問題なく動いているように見えますが、普段 Web アプリケーションを開発しているときような複雑な DOM を毎度毎度丸ごと作り替えるととんでもなくパフォーマンスが落ちてしまうのが容易に想像できると思います。  
 そこで、せっかく仮想 DOM を持っているわけですから、画面を描画する際に、前の仮想 DOM と比較して差分があったところだけを DOM 操作で書き換えるような実装をしたくなります。  
 さて、今回のメインテーマはこれです。
@@ -140,7 +140,7 @@ Text も実際にはただの文字列ではなく、HTML の TextElement とし
 
 としてあげる感じです。
 
-また、ここで一つ注意点なのは、h 関数を実行した時は従来通りの表現をして、上記のように Text を表現するのは、render 関数ないで normalize と言う関数を噛ませて変換することにします。  
+また、ここで一つ注意点なのは、h 関数を実行した時は従来通りの表現をして、上記のように Text を表現するのは、render 関数内で normalize と言う関数を噛ませて変換することにします。  
 これは本家の Vue.js に合わせてそうすることにします。
 
 `~/packages/runtime-core/vnode.ts`;
@@ -325,10 +325,7 @@ const processText = (
   if (n1 == null) {
     hostInsert((n2.el = hostCreateText(n2.children as string)), container);
   } else {
-    const el = (n2.el = n1.el!);
-    if (n2.children !== n1.children) {
-      hostSetText(el, n2.children as string);
-    }
+    // TODO: patch
   }
 };
 ```
@@ -394,6 +391,26 @@ const patchChildren = (n1: VNode, n2: VNode, container: RendererElement) => {
   for (let i = 0; i < c2.length; i++) {
     const child = (c2[i] = normalizeVNode(c2[i]));
     patch(c1[i], child, container);
+  }
+};
+```
+
+Text も同様に。
+
+```ts
+const processText = (
+  n1: string | null,
+  n2: string,
+  container: RendererElement
+) => {
+  if (n1 == null) {
+    hostInsert((n2.el = hostCreateText(n2.children as string)), container);
+  } else {
+    // patchの処理を追加
+    const el = (n2.el = n1.el!);
+    if (n2.children !== n1.children) {
+      hostSetText(el, n2.children as string);
+    }
   }
 };
 ```
