@@ -28,9 +28,9 @@ const render: RootRenderFunction = (rootComponent, container) => {
 ```
 
 render 関数内にルートコンポーネントに関する情報を直接定義してしまっています。  
-実際には、n1 や n2,updateComponent, effect は各コンポーネントごとに存在します。  
+実際には、n1 や n2, updateComponent, effect は各コンポーネントごとに存在します。  
 実際、これからはユーザー側でコンポーネント(ある意味でコンストラクタ)を定義してそれをインスタンス化したいわけです。  
-そして、そのインスタンスが n1 や n2,updateComponent などを持つような感じにしたいです。  
+そして、そのインスタンスが n1 や n2, updateComponent などを持つような感じにしたいです。  
 そこで、コンポーネントのインスタンスとしてこれらを閉じ込めることについて考えてみます。
 
 `~/packages/runtime-core/component.ts`に`ComponentInternalInstance`と言うものを定義してみます。
@@ -572,6 +572,90 @@ const setupRenderEffect = (
 
 ![props](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/props.png)
 ここまでのソースコード： https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/06-2_mininum_component_system
+
+ついでと言ってはなんなのですが、本家 Vue は props をケバブケースで受け取ることができるのでこれも実装してみましょう。  
+ここで、新たに `~/packages/shared` というディレクトリを作成し、 `general.ts` を作成します。  
+ここは、runtime-core や runtime-dom に限らず、汎用的な関数を定義する場所です。
+このタイミングで作る意味というのは特別ないのですが、本家に倣ってついでに作っておきます。
+そして、今回は `hasOwn` と `camelize` を実装してみます。
+
+`~/packages/shared/general.ts`
+
+```ts
+const hasOwnProperty = Object.prototype.hasOwnProperty;
+export const hasOwn = (
+  val: object,
+  key: string | symbol
+): key is keyof typeof val => hasOwnProperty.call(val, key);
+
+const camelizeRE = /-(\w)/g;
+export const camelize = (str: string): string => {
+  return str.replace(camelizeRE, (_, c) => (c ? c.toUpperCase() : ""));
+};
+```
+
+componentProps.ts で camelize してあげましょう。
+
+```ts
+export function updateProps(
+  instance: ComponentInternalInstance,
+  rawProps: Data | null
+) {
+  const { props } = instance;
+  // -------------------------------------------------------------- ここ
+  Object.entries(rawProps ?? {}).forEach(([key, value]) => {
+    props[camelize(key)] = value;
+  });
+}
+
+function setFullProps(
+  instance: ComponentInternalInstance,
+  rawProps: Data | null,
+  props: Data
+) {
+  const options = instance.propsOptions;
+
+  if (rawProps) {
+    for (let key in rawProps) {
+      const value = rawProps[key];
+      // -------------------------------------------------------------- ここ
+      // kebab -> camel
+      let camelKey;
+      if (options && hasOwn(options, (camelKey = camelize(key)))) {
+        props[camelKey] = value;
+      }
+    }
+  }
+}
+```
+
+これでケバブケースを扱うこともできるようになったはずです。 playground で確認してみましょう。
+
+```ts
+const MyComponent = {
+  props: { someMessage: { type: String } },
+
+  setup(props: { someMessage: string }) {
+    return () =>
+      h("div", { id: "my-app" }, [`someMessage: ${props.someMessage}`]);
+  },
+};
+
+const app = createApp({
+  setup() {
+    const state = reactive({ message: "hello" });
+    const changeMessage = () => {
+      state.message += "!";
+    };
+
+    return () =>
+      h("div", { id: "my-app" }, [
+        h(MyComponent, { "some-message": state.message }, []),
+        h("button", { onClick: changeMessage }, ["change message"]),
+      ]);
+  },
+});
+```
 
 ## Emits
 
