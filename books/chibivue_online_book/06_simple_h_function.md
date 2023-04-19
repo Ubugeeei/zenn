@@ -341,16 +341,37 @@ export function addEventListener(
   el.addEventListener(event, handler);
 }
 
+export function removeEventListener(
+  el: Element,
+  event: string,
+  handler: EventListener
+) {
+  el.removeEventListener(event, handler);
+}
+
 export function patchEvent(
   el: Element & { _vei?: Record<string, Invoker | undefined> },
   rawName: string,
   value: EventValue | null
 ) {
-  const name = parseName(rawName);
+  // vei = vue event invokers
+  const invokers = el._vei || (el._vei = {});
+  const existingInvoker = invokers[rawName];
 
-  if (value) {
-    const invoker = createInvoker(value);
-    addEventListener(el, name, invoker);
+  if (value && existingInvoker) {
+    // patch
+    existingInvoker.value = value;
+  } else {
+    const name = parseName(rawName);
+    if (value) {
+      // add
+      const invoker = (invokers[rawName] = createInvoker(value));
+      addEventListener(el, name, invoker);
+    } else if (existingInvoker) {
+      // remove
+      removeEventListener(el, name, existingInvoker);
+      invokers[rawName] = undefined;
+    }
   }
 }
 
@@ -373,7 +394,9 @@ addEventListener は名前の通り、ただイベントのリスナーを登録
 本当は然るべきタイミング remove する必要があるのですが、ここでは一旦気にしないことにします。
 
 patchEvent では invoker という関数でラップしてリスナーを登録しています。  
-parseName に関しては、単純に props のキー名は`onClick`や`onInput`のようになっているので、それらを on を除いた小文字に変換しているだけです。(eg. click, input)
+parseName に関しては、単純に props のキー名は`onClick`や`onInput`のようになっているので、それらを on を除いた小文字に変換しているだけです。(eg. click, input)  
+一点注意点としては、同じ要素に対して重複して addEventListener しないように、要素に`_vei` (vue event invokers)という名前で invoker を生やしてあげます。  
+これによって patch 時に existingInvoker.value を更新することで重複して addEventListener せずにハンドラを更新することができます。
 
 あとは patchProps に組み込んで renderVNode で使ってみましょう。
 
