@@ -794,3 +794,5 @@ const mountComponent = (initialVNode: VNode, container: RendererElement) => {
 
 先ほど想定していた開発者インターフェースの例で動作を確認してみましょう！  
 ちゃんと動いていればこれで props/emit によるコンポーネント間のやりとりが行えるようになりました！
+
+<!-- TODO: veiについての説明を書く -->

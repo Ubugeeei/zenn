@@ -11,5 +11,6 @@ chapters:
   - 07_minimum_reactive
   - 08_minimum_virtual_dom
   - 09_minimum_component
-  - 10_minimum_compiler
-  - 11_break
+  - 10_minimum_template_compiler
+  - 11_minimum_sfc
+  - 12_break
