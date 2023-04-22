@@ -209,3 +209,205 @@ const render = new Function("ChibiVue", code)(runtimeDom);
 const code = codegen({ tag, props, textContent });
 console.log(code); // "return () => { const { h } = ChibiVue; return h('p', { class: 'hello' }, ['Hello World']); }"
 ```
+
+つまり、先ほど、
+
+```ts
+`<p class="hello">Hello World</p>`;
+// ↓
+h("p", { class: "hello" }, ["Hello World"]);
+```
+
+のように変換すると言いましたが、正確には、
+
+```ts
+`<p class="hello">Hello World</p>`;
+
+// ↓
+
+(ChibiVue) => {
+  return () => {
+    const { h } = ChibiVue;
+    return h("p", { class: "hello" }, ["Hello World"]);
+  };
+};
+```
+
+のように変換し、runtimeDom を渡して render 関数を生成します。
+そして、codegen の責務は
+
+```ts
+const code = `
+  return () => {
+      const { h } = ChibiVue;
+      return h("p", { class: "hello" }, ["Hello World"]);
+  };
+`;
+```
+
+という文字列を生成することです。
+
+# 実装
+
+アプローチが理解できたら早速実装してみましょう。`~/packages/src`に`compiler-core`というディレクトリを作ってそこに`index.ts`, `parse.ts`, `codegen.ts`を作成します。
+
+```sh
+pwd # ~/
+mkdir packages/compiler-core
+touch packages/compiler-core/index.ts
+touch packages/compiler-core/parse.ts
+touch packages/compiler-core/codegen.ts
+```
+
+index.ts は例の如く export するためだけに利用します。
+
+それでは parse から実装していきましょう。
+`packages/compiler-core/parse.ts`
+
+```ts
+export const baseParse = (
+  content: string
+): { tag: string; props: Record<string, string>; textContent: string } => {
+  const matched = content.match(/<(\w+)\s+([^>]*)>([^<]*)<\/\1>/);
+  if (!matched) return { tag: "", props: {}, textContent: "" };
+
+  const [_, tag, attrs, textContent] = matched;
+
+  const props: Record<string, string> = {};
+  attrs.replace(/(\w+)=["']([^"']*)["']/g, (_, key: string, value: string) => {
+    props[key] = value;
+    return "";
+  });
+
+  return { tag, props, textContent };
+};
+```
+
+正規表現を使った非常に簡素なパーサではありますが、初めての実装としては十分です。
+
+続いて、コードの生成です。codegen.ts に実装していきます。
+`packages/compiler-core/codegen.ts`
+
+```ts
+export const generate = ({
+  tag,
+  props,
+  textContent,
+}: {
+  tag: string;
+  props: Record<string, string>;
+  textContent: string;
+}): string => {
+  return `return () => {
+  const { h } = ChibiVue;
+  return h("${tag}", { ${Object.entries(props)
+    .map(([k, v]) => `${k}: "${v}"`)
+    .join(", ")} }, ["${textContent}"]);
+}`;
+};
+```
+
+それでは、これらを組み合わせて template から関数の文字列を生成する関数を実装します。`packages/compiler-core/compile.ts`というファイルを新たに作成します。
+`packages/compiler-core/codegen.ts`
+
+```ts
+import { generate } from "./codegen";
+import { baseParse } from "./parse";
+
+export function baseCompile(template: string) {
+  const parseResult = baseParse(template);
+  const code = generate(parseResult);
+  return code;
+}
+```
+
+特に難しくないかと思います。実は、compiler-core の責務はここまでです。
+
+# ランタイム上のコンパイラとビルドプロセスのコンパイラ
+
+実は Vue にはコンパイラが 2 種類存在しています。  
+それは、ランタイム上(ブラウザ上)で実行されるものと、ビルドプロセス上(Node.js など)で実行されるものです。  
+具体的には、ランタイムの方は template オプションまたは html として与えられるテンプレートのコンパイラ、ビルドプロセス上は SFC(や jsx)のコンパイラです。  
+template オプションとはちょうど今我々が実装しているものです。
+
+```ts
+const app = createApp({ template: `<p class="hello">Hello World</p>` });
+app.mount("#app");
+```
+
+```html
+<div id="app"></div>
+```
+
+html として与えられるテンプレートというのは html に Vue の template を書くような開発者インターフェースです。(CDN 経由などでサクッと HTML に盛り込むのに便利です。)
+
+```ts
+const app = createApp();
+app.mount("#app");
+```
+
+```html
+<div id="app">
+  <p class="hello">Hello World</p>
+  <button @click="() => alert("hello")">click me!</button>
+</div>
+```
+
+これら 2 つはどちらも template をコンパイルする必要がありますが、コンパイルはブラウザ上で実行されます。
+
+一方で、SFC のコンパイルはプロジェクトのビルド時に行われ、ランタイム上にはコンパイル後のコードしか存在していません。(開発環境に vite や webpack 等のバンドラを用意する必要があります。)
+
+```vue
+<!-- App.vue -->
+<script>
+export default {}
+</script>
+
+<template>
+  <p class="hello">Hello World</p>
+  <button @click="() => alert("hello")">click me!</button>
+</template>
+```
+
+```ts
+import App from "App.vue";
+const app = createApp(App);
+app.mount("#app");
+```
+
+```html
+<div id="app"></div>
+```
+
+そして、注目するべき点はどっちのコンパイラにせよ、共通の処理という点です。  
+この共通部分のソースコードを実装しているのが `compiler-core` ディレクトリです。  
+そして、ランタイム上のコンパイラ、SFC コンパイラはそれぞれ`compiler-dom`, `compiler-sfc`というディレクトリに実装されています。  
+ぜひ、ここらでこの図を見返してみてください。
+
+```mermaid
+  flowchart LR
+    compiler-sfc["@vue/compiler-sfc"]
+    compiler-dom["@vue/compiler-dom"]
+    compiler-core["@vue/compiler-core"]
+    vue["vue"]
+    runtime-dom["@vue/runtime-dom"]
+    runtime-core["@vue/runtime-core"]
+    reactivity["@vue/reactivity"]
+
+    subgraph "Runtime Packages"
+      runtime-dom --> runtime-core
+      runtime-core --> reactivity
+    end
+
+    subgraph "Compiler Packages"
+      compiler-sfc --> compiler-core
+      compiler-sfc --> compiler-dom
+      compiler-dom --> compiler-core
+    end
+
+    vue ---> compiler-dom
+    vue --> runtime-dom
+
+```
+
+https://github.com/vuejs/core/blob/main/.github/contributing.md#package-dependencies
