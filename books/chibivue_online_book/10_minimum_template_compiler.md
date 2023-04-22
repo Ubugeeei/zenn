@@ -411,3 +411,184 @@ app.mount("#app");
 ```
 
 https://github.com/vuejs/core/blob/main/.github/contributing.md#package-dependencies
+
+# 実装の続き
+
+少し話が飛んでしまいましたが、実装の続きをやっていきましょう。
+先ほどの話を考慮すると、今作っているのはランタイム上で動作するコンパイラなので、`compiler-dom`を作っていくのが良さそうです。
+
+```sh
+pwd # ~/
+mkdir packages/compiler-dom
+touch packages/compiler-dom/index.ts
+```
+
+`packages/compiler-dom/index.ts`に実装します。
+
+```ts
+import { baseCompile } from "../compiler-core";
+
+export function compile(template: string) {
+  return baseCompile(template);
+}
+```
+
+「えっっっっ、これじゃあただ codegen しただけじゃん。関数の生成はどうするの？」と思ったかも知れません。  
+実はここでも関数の生成は行なっておらず、どこで行うかというと`package/index.ts`です。(本家のコードで言うと [packages/vue/src/index.ts](https://github.com/vuejs/core/blob/main/packages/vue/src/index.ts) です)
+
+`package/index.ts`を実装したいところですが、ちょいと下準備があるので先にそちらからやります。
+その下準備というのは、`package/runtime-core/component.ts`にコンパイラ本体を保持する変数と、登録用の関数を実装です。
+
+`package/runtime-core/component.ts`
+
+```ts
+type CompileFunction = (template: string) => InternalRenderFunction;
+let compile: CompileFunction | undefined;
+
+export function registerRuntimeCompiler(_compile: any) {
+  compile = _compile;
+}
+```
+
+それでは、`package/index.ts`で関数の生成をして、登録してあげましょう。
+
+```ts
+import { compile } from "./compiler-dom";
+import {
+  InternalRenderFunction,
+  registerRuntimeCompiler,
+} from "./runtime-core";
+import * as runtimeDom from "./runtime-dom";
+
+function compileToFunction(template: string): InternalRenderFunction {
+  const code = compile(template);
+  return new Function("ChibiVue", code)(runtimeDom);
+}
+
+registerRuntimeCompiler(compileToFunction);
+
+export * from "./runtime-core";
+export * from "./runtime-dom";
+export * from "./reactivity";
+```
+
+※ runtimeDom には h 関数を含める必要があるので `runtime-dom`で export するのを忘れないようにしてください。
+
+```ts
+export { h } from "../runtime-core";
+```
+
+さて、コンパイラの登録ができたので実際にコンパイルを実行したいです。
+コンポーネントのオプションの型に template がなくては始まらないのでとりあえず template は生やしておきます。
+
+```ts
+export type ComponentOptions = {
+  props?: Record<string, any>;
+  setup?: (
+    props: Record<string, any>,
+    ctx: { emit: (event: string, ...args: any[]) => void }
+  ) => Function;
+  render?: Function;
+  template?: string; // 追加
+};
+```
+
+肝心のコンパイルですが、renderer を少しリファクタする必要があります。
+
+```ts
+const mountComponent = (initialVNode: VNode, container: RendererElement) => {
+  const instance: ComponentInternalInstance = (initialVNode.component =
+    createComponentInstance(initialVNode));
+
+  // ----------------------- ここから
+  const { props } = instance.vnode;
+  initProps(instance, props);
+  const component = initialVNode.type as Component;
+  if (component.setup) {
+    instance.render = component.setup(instance.props, {
+      emit: instance.emit,
+    }) as InternalRenderFunction;
+  }
+  // ----------------------- ここまで
+
+  setupRenderEffect(instance, initialVNode, container);
+};
+```
+
+`mountComponent`の上記に示した部分を`package/runtime-core/component.ts`に切り出します。
+
+`package/runtime-core/component.ts`
+
+```ts
+export const setupComponent = (instance: ComponentInternalInstance) => {
+  const { props } = instance.vnode;
+  initProps(instance, props);
+
+  const component = instance.type as Component;
+  if (component.setup) {
+    instance.render = component.setup(instance.props, {
+      emit: instance.emit,
+    }) as InternalRenderFunction;
+  }
+};
+```
+
+`package/runtime-core/renderer.ts`
+
+```ts
+const mountComponent = (initialVNode: VNode, container: RendererElement) => {
+  // prettier-ignore
+  const instance: ComponentInternalInstance = (initialVNode.component = createComponentInstance(initialVNode));
+  setupComponent(instance);
+  setupRenderEffect(instance, initialVNode, container);
+};
+```
+
+それでは、setupComponent 内でコンパイルを実行していきましょう。
+
+```ts
+export const setupComponent = (instance: ComponentInternalInstance) => {
+  const { props } = instance.vnode;
+  initProps(instance, props);
+
+  const component = instance.type as Component;
+  if (component.setup) {
+    instance.render = component.setup(instance.props, {
+      emit: instance.emit,
+    }) as InternalRenderFunction;
+  }
+
+  // ------------------------ ここ
+  if (compile && !component.render) {
+    const template = component.template ?? "";
+    if (template) {
+      instance.render = compile(template);
+    }
+  }
+};
+```
+
+これで template オプションで私た簡素な HTML がコンパイルできるようになったはずなので playground で試してみましょう！
+
+```ts
+const app = createApp({ template: `<p class="hello">Hello World</p>` });
+app.mount("#app");
+```
+
+![simple_template_compiler](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/simple_template_compiler.png)
+
+無事に動いているようです。同じ構造であればコンパイルできるはずなので、少しいじってみて反映されるか確認してみましょう。
+
+```ts
+const app = createApp({
+  template: `<b class="hello" style="color: red;">Hello World!!</b>`,
+});
+app.mount("#app");
+```
+
+![simple_template_compiler2](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/simple_template_compiler2.png)
+
+ちゃんと実装できているようです！
+
+ここまでのソースコード:  
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/07-1_mininum_template_compiler
