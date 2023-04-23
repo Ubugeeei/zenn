@@ -798,7 +798,7 @@ function parseChildren(
 
   while (!isEnd(context, ancestors)) {
     const s = context.source;
-    let node: TemplateChildNode[] = [];
+    let node: TemplateChildNode | undefined = undefined;
 
     if (s[0] === "<") {
       // sが"<"で始まり、かつ次の文字がアルファベットの場合は要素としてパースします。
@@ -809,12 +809,10 @@ function parseChildren(
 
     if (!node) {
       //　上記の条件に当てはまらなかった場合位はTextNodeとしてパースします。
-      node = [parseText(context)]; // TODO: これから実装します。
+      node = parseText(context); // TODO: これから実装します。
     }
 
-    for (let i = 0; i < node.length; i++) {
-      pushNode(nodes, node[i]);
-    }
+    pushNode(nodes, node);
   }
 
   return nodes;
@@ -1136,3 +1134,63 @@ function parseAttributeValue(context: ParserContext): AttributeValue {
   return { content, loc: getSelection(context, start) };
 }
 ```
+
+# パーサの実装を終えて
+
+例になくたくさんコードを書いてきました。(せいぜい 300 行ちょっとですが)  
+ここの実装は特別言葉で説明するよりも読んだ方が理解が進むと思うので、何度か繰り返し読んでみてください。  
+たくさん書きましたが基本的には文字列を読み進めて解析を進めているだけで、特に難しいテクニックなどはない地道な作業です。
+
+ここまでで AST を生成できるようになっているはずです。パースができているか動作を確認してみましょう。
+とはいえ、codegen の部分をまだ実装できていないので、今回に関しては console に出力して確認してみます。
+
+```ts
+const app = createApp({
+  template: `
+    <div class="container" style="text-align: center">
+      <h2>Hello, chibivue!</h2>
+      <img
+        width="150px"
+        src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Vue.js_Logo_2.svg/1200px-Vue.js_Logo_2.svg.png"
+      />
+      <p><b>chibivue</b> is the minimal Vue.js</p>
+
+      <style>
+        .container {
+          height: 100vh;
+          padding: 16px;
+          background-color: #becdbe;
+          color: #2c3e50;
+        }
+      </style>
+    </div>
+  `,
+});
+app.mount("#app");
+```
+
+`~/packages/compiler-core/compile.ts`
+
+```ts
+export function baseCompile(template: string) {
+  const parseResult = baseParse(template.trim()); // templateはトリムしておく
+  console.log(
+    "🚀 ~ file: compile.ts:6 ~ baseCompile ~ parseResult:",
+    parseResult
+  );
+
+  // TODO: codegen
+  // const code = generate(parseResult);
+  // return code;
+  return "";
+}
+```
+
+画面は何も表示されなくなってしまいますが、コンソールを確認してみましょう。
+
+![simple_template_compiler_complex_html](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/simple_template_compiler_complex_html.png)
+
+いい感じにパースができているようです。
+それではここで生成した AST を元に codegen の方の実装を進めていこうと思います。
+
+# 本格的なコードジェネレータの実装
