@@ -349,7 +349,7 @@ app.mount("#app");
 ```html
 <div id="app">
   <p class="hello">Hello World</p>
-  <button @click="() => alert("hello")">click me!</button>
+  <button @click="() => alert('hello')">click me!</button>
 </div>
 ```
 
