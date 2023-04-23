@@ -12,5 +12,7 @@ chapters:
   - 08_minimum_virtual_dom
   - 09_minimum_component
   - 10_minimum_template_compiler
-  - 11_minimum_sfc
-  - 12_break
+  - 11_more_complex_parser
+  - 12_more_complex_generator
+  - 13_minimum_sfc
+  - 14_break
