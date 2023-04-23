@@ -715,8 +715,13 @@ export interface Position {
 これらが今回扱う AST です。  
 parse 関数では template の文字列をこの AST に変換するような実装をしていきます。
 
-`~/packages/compiler-core/ast.ts`  
-を実装していきます。  
+# 本格的なパーサの実装
+
+`~/packages/compiler-core/parse.ts` に本格的な実装していきます。  
+本格的と言ってもあまり身構えなくて大丈夫です。やっていることは基本的に文字列を読み進めながら分岐やループを活用して AST を生成しているだけです。  
+ソースコードが少し多くなりますが、説明もコードベースの方が分かりやすいと思うのでそう進めていきます。  
+細かい部分はぜひソースコードを読んで把握してみてください。
+
 今実装してある baseParse の内容は一旦消して、戻り値の型も以下のようにします。
 
 ```ts
@@ -729,6 +734,8 @@ export const baseParse = (
   return { children: [] };
 };
 ```
+
+## Context
 
 まずは parse する際に使う状態から実装します。これは `ParserContext`という名前をつけて、パース中に必要な情報をここにまとめます。ゆくゆくはパーサーの設定オプションなども保持するようになると思います。
 
@@ -764,6 +771,8 @@ export const baseParse = (
   return { children: [] };
 };
 ```
+
+## parseChildren
 
 順番的には、(parseChildren) -> (paseElement または parseText)とパースを進めていきます。
 
@@ -857,3 +866,87 @@ function startsWithEndTagOpen(source: string, tag: string): boolean {
 ```
 
 続いて parseElement と parseText について実装していきます。
+
+## parseText
+
+まずはシンプルな parseText の方から.一部、parseText 以外でも使うユーティリティも実装しているので少しだけ長いです。
+
+```ts
+function parseText(context: ParserContext): TextNode {
+  // "<" (タグの開始(開始タグ終了タグ問わず))まで読み進め、何文字読んだかを元にTextデータの終了時点のindexを算出します。
+  const endToken = "<";
+  let endIndex = context.source.length;
+  const index = context.source.indexOf(endToken, 1);
+  if (index !== -1 && endIndex > index) {
+    endIndex = index;
+  }
+
+  const start = getCursor(context); // これは loc 用
+
+  //　entIndexの情報を元に Text データをパースします。
+  const content = parseTextData(context, endIndex);
+
+  return {
+    type: NodeTypes.TEXT,
+    content,
+    loc: getSelection(context, start),
+  };
+}
+
+// content と length を元に text を抽出します。
+function parseTextData(context: ParserContext, length: number): string {
+  const rawText = context.source.slice(0, length);
+  advanceBy(context, length);
+  return rawText;
+}
+
+function advanceBy(context: ParserContext, numberOfCharacters: number): void {
+  const { source } = context;
+  advancePositionWithMutation(context, source, numberOfCharacters);
+  context.source = source.slice(numberOfCharacters);
+}
+
+// 少し長いですが、やっていることは単純で、 pos の計算を行っています。
+// 引数でもらった pos のオブジェクトを破壊的に更新しています。
+function advancePositionWithMutation(
+  pos: Position,
+  source: string,
+  numberOfCharacters: number = source.length
+): Position {
+  let linesCount = 0;
+  let lastNewLinePos = -1;
+  for (let i = 0; i < numberOfCharacters; i++) {
+    if (source.charCodeAt(i) === 10 /* newline char code */) {
+      linesCount++;
+      lastNewLinePos = i;
+    }
+  }
+
+  pos.offset += numberOfCharacters;
+  pos.line += linesCount;
+  pos.column =
+    lastNewLinePos === -1
+      ? pos.column + numberOfCharacters
+      : numberOfCharacters - lastNewLinePos;
+
+  return pos;
+}
+
+function getCursor(context: ParserContext): Position {
+  const { column, line, offset } = context;
+  return { column, line, offset };
+}
+
+function getSelection(
+  context: ParserContext,
+  start: Position,
+  end?: Position
+): SourceLocation {
+  end = end || getCursor(context);
+  return {
+    start,
+    end,
+    source: context.originalSource.slice(start.offset, end.offset),
+  };
+}
+```
