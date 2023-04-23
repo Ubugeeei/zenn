@@ -592,3 +592,125 @@ app.mount("#app");
 
 ここまでのソースコード:  
 https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/07-1_mininum_template_compiler
+
+# もっと複雑な HTML を書きたい
+
+今の状態だとせいぜいタグの名前や属性を、テキストの内容くらいしか表すことができていません。  
+そこで、もっと複雑な HTML を template に書けるようにしたいです。
+具体的には、これくらいのテンプレートをコンパイルできるようになりたいです。
+
+```ts
+const app = createApp({
+  template: `
+    <div class="container" style="text-align: center">
+      <h2>Hello, chibivue!</h2>
+      <img
+        width="150px"
+        src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Vue.js_Logo_2.svg/1200px-Vue.js_Logo_2.svg.png"
+      />
+      <p><b>chibivue</b> is the minimal Vue.js</p>
+
+      <style>
+        .container {
+          height: 100vh;
+          padding: 16px;
+          background-color: #becdbe;
+          color: #2c3e50;
+        }
+      </style>
+    </div>
+
+  `,
+});
+app.mount("#app");
+```
+
+しかしこれだけ複雑なものは正規表現でパースするのは厳しいのです。なので、ここからは本格的にパーサを実装していこうと思います。
+
+# AST の導入
+
+本格的なコンパイラを実装していくにあたって AST というものを導入します。  
+AST は Abstract Syntax Tree (抽象構文木)の略で、名前の通り、構文を表現する木構造のデータ表現です。  
+これは、Vue.js に限らず、さまざまなコンパイラを実装するときに登場する概念です。  
+多くの場合(言語処理系においては)、「パース」というと、この AST という表現に変換することを指します。  
+AST の定義はそれぞれの言語が各自で定義します。  
+例えば、皆さんが馴染み深いであろう JavaScript は [estree](https://github.com/estree/estree) という AST で表現されていて、内部的にはソースコードの文字列がこの定義に沿ってパースされていたりします。
+
+と、少しかっこいい感じの説明をしてみましたが、イメージ的にはこれまで実装していた parse 関数の戻り値の型をもっとかっちり形式的に定義するだけです。
+今現状だと、parse 関数の戻り値は以下のようになっています。
+
+```ts
+type ParseResult = {
+  tag: string;
+  props: Record<string, string>;
+  textContent: string;
+};
+```
+
+これを拡張して、もっと複雑な表現を行えるような定義にしてみます。
+
+新たに `~/packages/compiler-core/ast.ts` を作成します。  
+少し長いので、コード中に説明を書きながら説明を進めます。
+
+```ts
+// これは Node の種類を表すものです。
+// 注意するべき点としては、ここでいう Node というのは HTML の Node のことではなく、あくまでこのテンプレートコンパイラで扱う粒度であるということです。
+// なので、 Element やTextだけでなく Attribute も一つの Node として扱われます。
+// これは Vue.js の設計に沿った粒度で、今後、ディレクティブを実装する際などに役に立ちます。
+export const enum NodeTypes {
+  ELEMENT,
+  TEXT,
+  ATTRIBUTE,
+}
+
+// 全ての Node は type と loc を持っています。
+// loc というのは location のことで、この Node がソースコード(テンプレート文字列)のどこに該当するかの情報を保持します。
+// (何行目のどこにあるかなど)
+export interface Node {
+  type: NodeTypes;
+  loc: SourceLocation;
+}
+
+// Element の Node です。
+export interface ElementNode extends Node {
+  type: NodeTypes.ELEMENT;
+  tag: string; // eg. "div"
+  props: Array<AttributeNode>; // eg. { name: "class", value: { content: "container" } }
+  children: TemplateChildNode[];
+  isSelfClosing: boolean; // eg. <img /> -> true
+}
+
+// ElementNode が持つ属性です。
+// ただの Record<string, string> と表現してしまってもいいのですが、
+// Vue に倣って name(string) と value(TextNode) を持つようにしています。
+export interface AttributeNode extends Node {
+  type: NodeTypes.ATTRIBUTE;
+  name: string;
+  value: TextNode | undefined;
+}
+
+export type TemplateChildNode = ElementNode | TextNode;
+
+export interface TextNode extends Node {
+  type: NodeTypes.TEXT;
+  content: string;
+}
+
+// location の情報です。 Node はこの情報を持ちます。
+// start, end に位置情報が入ります。
+// source には実際のコード(文字列)が入ります。
+export interface SourceLocation {
+  start: Position;
+  end: Position;
+  source: string;
+}
+
+export interface Position {
+  offset: number; // from start of file
+  line: number;
+  column: number;
+}
+```
+
+これらが今回扱う AST です。
+parse 関数では template の文字列をこの AST に変換するような実装をしていきます。
