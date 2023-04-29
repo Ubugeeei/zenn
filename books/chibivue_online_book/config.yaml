@@ -13,6 +13,6 @@ chapters:
   - 09_minimum_component
   - 10_minimum_template_compiler
   - 11_more_complex_parser
-  - 12_more_complex_generator
+  - 12_template_binding
   - 13_minimum_sfc
   - 14_break

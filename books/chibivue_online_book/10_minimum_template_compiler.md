@@ -97,41 +97,6 @@ const app = createApp({
 ```
 
 それぞれでさらに小さく分割はしていくのですが、おおまかにこの 3 ステップに分割してみます。  
-ですが、template に独自の文法(ディレクティブなど)を実装するのは少しだけ複雑なので、Minimal Example 部門では以下のような簡易的なスクリプトを実行できるようなものを目指します。
-
-```ts
-const app = createApp({
-  setup() {
-    let count = 0;
-
-    // マウントした後に実行したいのでsetTimeoutでキューに追加
-    setTimeout(() => {
-      const p = document.getElementById("count-container");
-      p && p.textContent = count;
-
-      const btn = document.getElementById("increment-btn");
-      btn &&
-        btn.addEventListener("click", () => {
-          p && p.textContent = ++count;
-        });
-    });
-
-    return {};
-  },
-
-  template: `
-    <div>
-      <p id="count-container"></p>
-      <button id="increment-btn"> increment </button>
-    </div>
-  `,
-});
-```
-
-これだとリアクティブシステムや仮装 DOM の意味がないのですが、今回の目標はテンプレートをレンダリングできるにすることなのでよしとしてやってください(汗)
-
-ディレクティブなどの実装は Basic Template Compiler 部門で行うことにします。
-
 まずは 1 からやっていきましょう。
 
 # テンプレートコンパイラの第一歩
