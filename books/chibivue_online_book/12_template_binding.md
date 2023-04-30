@@ -417,6 +417,228 @@ const setupRenderEffect = (
 
 これにて初めてのバインディング、完です！
 
-## イベントハンドラ
+## 初めてのディレクティブ
+
+さて、マスタッシュの次はインベントハンドラです。
+やることはマスタッシュの時にやったバインディングと基本的には同じで、何ともお行儀の悪いコードですが、以下のようなもので簡単に動くかと思います。
+
+```ts
+const genElement = (el: ElementNode): string => {
+  return `h("${el.tag}", {${el.props
+    .map(({ name, value }) =>
+      // props 名が @click だった場合にonClickに変換する
+      name === "@click"
+        ? `onClick: _ctx.${value?.content}`
+        : `${name}: "${value?.content}"`
+    )
+    .join(", ")}}, [${el.children.map((it) => genNode(it)).join(", ")}])`;
+};
+```
+
+動作を確認してみましょう。
+
+```ts
+const app = createApp({
+  setup() {
+    const state = reactive({ message: "Hello, chibivue!" });
+    const changeMessage = () => {
+      state.message += "!";
+    };
+
+    return { state, changeMessage };
+  },
+  template: `
+    <div class="container" style="text-align: center">
+      <h2>{{ state.message }}</h2>
+      <img
+        width="150px"
+        src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Vue.js_Logo_2.svg/1200px-Vue.js_Logo_2.svg.png"
+      />
+      <p><b>chibivue</b> is the minimal Vue.js</p>
+
+      <button @click="changeMessage"> click me! </button>
+
+      <style>
+        .container {
+          height: 100vh;
+          padding: 16px;
+          background-color: #becdbe;
+          color: #2c3e50;
+        }
+      </style>
+    </div>
+  `,
+});
+```
+
+動きましたね！やったね！完成！
+
+と言いたいところですが、流石に実装が綺麗じゃないのでリファくたしていこうかと思います。
+`@click`というものはせっかく、「ディレクティブ」という名前で分類されていて、今後は v-bind や v-model を実装していくことは容易の想像できるかと思いますので、AST 上で`DIRECTIVE`と表現することにして、単純な ATTRIBUTE と区別するようにしておきましょう。
+
+いつも通り AST -> parse -> codegen の順で実装してみます。
+
+```ts
+export const enum NodeTypes {
+  ELEMENT,
+  TEXT,
+  INTERPOLATION,
+
+  ATTRIBUTE,
+  DIRECTIVE, // 追加
+}
+
+export interface ElementNode extends Node {
+  type: NodeTypes.ELEMENT;
+  tag: string;
+  props: Array<AttributeNode | DirectiveNode>; // props は Attribute と DirectiveNode のユニオンの配列にする
+  // .
+  // .
+}
+
+export interface DirectiveNode extends Node {
+  type: NodeTypes.DIRECTIVE;
+  // v-name:arg="exp" というような形式で表すことにする。
+  // eg. v-on:click="increment"の場合は { name: "on", arg: "click", exp="increment" }
+  name: string;
+  arg: string;
+  exp: string;
+}
+```
+
+```ts
+function parseAttribute(
+  context: ParserContext,
+  nameSet: Set<string>
+): AttributeNode | DirectiveNode {
+  // Name.
+  const start = getCursor(context);
+  const match = /^[^\t\r\n\f />][^\t\r\n\f />=]*/.exec(context.source)!;
+  const name = match[0];
+
+  nameSet.add(name);
+
+  advanceBy(context, name.length);
+
+  // Value
+  let value: AttributeValue = undefined;
+
+  if (/^[\t\r\n\f ]*=/.test(context.source)) {
+    advanceSpaces(context);
+    advanceBy(context, 1);
+    advanceSpaces(context);
+    value = parseAttributeValue(context);
+  }
+
+  // --------------------------------------------------- ここから
+  // directive
+  const loc = getSelection(context, start);
+  if (/^(v-[A-Za-z0-9-]|@)/.test(name)) {
+    const match =
+      /(?:^v-([a-z0-9-]+))?(?:(?::|^\.|^@|^#)(\[[^\]]+\]|[^\.]+))?(.+)?$/i.exec(
+        name
+      )!;
+
+    let dirName = match[1] || (startsWith(name, "@") ? "on" : "");
+
+    let arg = "";
+
+    if (match[2]) arg = match[2];
+
+    return {
+      type: NodeTypes.DIRECTIVE,
+      name: dirName,
+      exp: value?.content ?? "",
+      loc,
+      arg,
+    };
+  }
+  // --------------------------------------------------- ここまで
+  // .
+  // .
+  // .
+```
+
+```ts
+const genElement = (el: ElementNode): string => {
+  return `h("${el.tag}", {${el.props
+    .map((prop) => genProp(prop))
+    .join(", ")}}, [${el.children.map((it) => genNode(it)).join(", ")}])`;
+};
+
+const genProp = (prop: AttributeNode | DirectiveNode): string => {
+  switch (prop.type) {
+    case NodeTypes.ATTRIBUTE:
+      return `${prop.name}: "${prop.value?.content}"`;
+    case NodeTypes.DIRECTIVE: {
+      switch (prop.name) {
+        case "on":
+          return `${toHandlerKey(prop.arg)}: _ctx.${prop.exp}`;
+        default:
+          // TODO: other directives
+          throw new Error(`unexpected directive name. got "${prop.name}"`);
+      }
+    }
+    default:
+      throw new Error(`unexpected prop type.`);
+  }
+};
+```
+
+さて、playground で動作を確認してみましょう。
+`@click`のみならず、`v-on:click`や他のイベントもハンドリングできるようになっているはずです。
+
+```ts
+const app = createApp({
+  setup() {
+    const state = reactive({ message: "Hello, chibivue!", input: "" });
+
+    const changeMessage = () => {
+      state.message += "!";
+    };
+
+    const handleInput = (e: InputEvent) => {
+      state.input = (e.target as HTMLInputElement)?.value ?? "";
+    };
+
+    return { state, changeMessage, handleInput };
+  },
+
+  template: `
+    <div class="container" style="text-align: center">
+      <h2>{{ state.message }}</h2>
+      <img
+        width="150px"
+        src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Vue.js_Logo_2.svg/1200px-Vue.js_Logo_2.svg.png"
+      />
+      <p><b>chibivue</b> is the minimal Vue.js</p>
+
+      <button @click="changeMessage"> click me! </button>
+
+      <br />
+
+      <input @input="handleInput"/>
+      <p>{{ state.input }}</p>
+
+      <style>
+        .container {
+          height: 100vh;
+          padding: 16px;
+          background-color: #becdbe;
+          color: #2c3e50;
+        }
+      </style>
+    </div>
+  `,
+});
+```
+
+![compile_directives](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/compile_directives.png)
+
+やりました。かなり Vue に近づいてきました！  
+ここまでで小さなテンプレートの実装は完了です。お疲れ様でした。
+
+ここまでのソースコード:  
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/07-3_mininum_template_compiler
 
 <!-- ちゃんと動いているようなのでコンパイラ実装を始める際に分割した 3 つのタスクを実装し終えました。やったね！ -->
