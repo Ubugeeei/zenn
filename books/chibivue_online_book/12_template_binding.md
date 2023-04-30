@@ -332,4 +332,151 @@ const app = createApp({
   ]);
 ```
 
+## マスタッシュ構文の実装
+
+まずはマスタッシュ構文の実装をしていきます。例によって、AST を考え、パーサの実装してコードジェネレータの実装をしていきます。  
+今現時点で AST の Node として定義されているのは Element と Text と Attribute 程度です。  
+新たにマスタッシュ構文を定義したいので、直感的には `Mustache`のような AST にすることが考えられます。
+それにあたるのが`Interpolation`という Node です。
+Interpolation には「内挿」であったり、「挿入」と言った意味合いがあります。
+よって、今回扱う AST は次のようなものになります。
+
+```ts
+export const enum NodeTypes {
+  ELEMENT,
+  TEXT,
+  INTERPOLATION, // 追加
+
+  ATTRIBUTE,
+}
+
+export type TemplateChildNode = ElementNode | TextNode | InterpolationNode; // InterpolationNodeを追加
+
+export interface InterpolationNode extends Node {
+  type: NodeTypes.INTERPOLATION;
+  content: string; // マスタッシュの中に記述された内容 (今回は　setup で定義された単一の変数名がここに入る)
+}
+```
+
+ここで一つ注意点と言っては何ですが、マスタッシュは JavaScript の式をテンプレートに埋め込むためのものです。
+なので、実際には
+
+```html
+{{ 999 }} {{ 1 + 2}} {{ message + "!" }} {{ getMessage() }}
+```
+
+などのようなコードにも対応する必要があります。  
+が、今回は、**setup で定義された単一の変数**のみバインドすることを考えます。  
+(この辺りの実装は最小構成部門では取り上げず、後の部門で取り上げます。)
+具体的には以下のようなものです。
+
+```html
+{{ message }}
+```
+
+AST が実装できたので、パースの実装をやっていきます。
+`{{`という文字列を見つけたら Interpolation としてパースします。
+
+```ts
+context: ParserContext,
+  ancestors: ElementNode[]
+): TemplateChildNode[] {
+  const nodes: TemplateChildNode[] = [];
+
+  while (!isEnd(context, ancestors)) {
+    const s = context.source;
+    let node: TemplateChildNode | undefined = undefined;
+
+    if (startsWith(s, "{{")) { // ここ
+      node = parseInterpolation(context);
+    } else if (s[0] === "<") {
+      if (/[a-z]/i.test(s[1])) {
+        node = parseElement(context, ancestors);
+      }
+    }
+    // .
+    // .
+    // .
+```
+
+```ts
+function parseInterpolation(
+  context: ParserContext
+): InterpolationNode | undefined {
+  const [open, close] = ["{{", "}}"];
+  const closeIndex = context.source.indexOf(close, open.length);
+  if (closeIndex === -1) return undefined;
+
+  const start = getCursor(context);
+  advanceBy(context, open.length);
+
+  const innerStart = getCursor(context);
+  const innerEnd = getCursor(context);
+  const rawContentLength = closeIndex - open.length;
+  const rawContent = context.source.slice(0, rawContentLength);
+  const preTrimContent = parseTextData(context, rawContentLength);
+
+  const content = preTrimContent.trim();
+
+  const startOffset = preTrimContent.indexOf(content);
+
+  if (startOffset > 0) {
+    advancePositionWithMutation(innerStart, rawContent, startOffset);
+  }
+  const endOffset =
+    rawContentLength - (preTrimContent.length - content.length - startOffset);
+  advancePositionWithMutation(innerEnd, rawContent, endOffset);
+  advanceBy(context, close.length);
+
+  return {
+    type: NodeTypes.INTERPOLATION,
+    content,
+    loc: getSelection(context, start),
+  };
+}
+```
+
+これまでパーサを実装してきた方にとっては特に難しいことはないはずです。`{{`を探し、`}}`が来るまで読み進めて AST を生成しているだけです。  
+`}}`が見つからなかった場合は undefined を返し、parseText への分岐でテキストとしてパースさせています。
+
+ここらでちゃんとパースができているか、コンソール等に出力して確認してみましょう。
+
+```ts
+const app = createApp({
+  setup() {
+    const state = reactive({ message: "Hello, chibivue!" });
+    const changeMessage = () => {
+      state.message += "!";
+    };
+
+    return { state, changeMessage };
+  },
+  template: `
+    <div class="container" style="text-align: center">
+      <h2>{{ message }}</h2>
+      <img
+        width="150px"
+        src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Vue.js_Logo_2.svg/1200px-Vue.js_Logo_2.svg.png"
+      />
+      <p><b>chibivue</b> is the minimal Vue.js</p>
+
+      <button> click me! </button>
+
+      <style>
+        .container {
+          height: 100vh;
+          padding: 16px;
+          background-color: #becdbe;
+          color: #2c3e50;
+        }
+      </style>
+    </div>
+  `,
+});
+```
+
+![parse_interpolation](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/parse_interpolation.png)
+
+問題なさそうです！
+
 <!-- ちゃんと動いているようなのでコンパイラ実装を始める際に分割した 3 つのタスクを実装し終えました。やったね！ -->
