@@ -366,12 +366,16 @@ export interface InterpolationNode extends Node {
 ```
 
 などのようなコードにも対応する必要があります。  
-が、今回は、**setup で定義された単一の変数**のみバインドすることを考えます。  
-(この辺りの実装は最小構成部門では取り上げず、後の部門で取り上げます。)
+が、今回は、**setup で定義された単一の変数**または**setup で定義された単一のオブジェクトのメンバアクセス**のみバインドすることを考えます。  
+(この辺りの実装は最小構成部門では取り上げず、後の部門で取り上げます。)  
 具体的には以下のようなものです。
 
 ```html
 {{ message }}
+```
+
+```html
+{{ state.message }}
 ```
 
 AST が実装できたので、パースの実装をやっていきます。
@@ -453,7 +457,7 @@ const app = createApp({
   },
   template: `
     <div class="container" style="text-align: center">
-      <h2>{{ message }}</h2>
+      <h2>{{ state.message }}</h2>
       <img
         width="150px"
         src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Vue.js_Logo_2.svg/1200px-Vue.js_Logo_2.svg.png"
@@ -478,5 +482,90 @@ const app = createApp({
 ![parse_interpolation](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/parse_interpolation.png)
 
 問題なさそうです！
+
+さてそれではこの AST を元にバインディングを実装していきましょう。
+codegen する際に content に対して`_ctx.`という prefix を付与してあげます。
+
+```ts
+const genNode = (node: TemplateChildNode): string => {
+  switch (node.type) {
+    // .
+    // .
+    case NodeTypes.INTERPOLATION:
+      return genInterpolation(node);
+    // .
+    // .
+  }
+};
+
+const genInterpolation = (node: InterpolationNode): string => {
+  return `_ctx.${node.content}`;
+};
+```
+
+そして、render 関数の引数として\_ctx を受け取れるようにします。
+
+```ts
+export const generate = ({
+  children,
+}: {
+  children: TemplateChildNode[];
+}): string => {
+  // ここの引数に `_ctx` を追加
+  return `return function render(_ctx) {
+  const { h } = ChibiVue;
+  return ${genNode(children[0])};
+}`;
+};
+```
+
+あとは、実際に render 関数を実行する際に引数として setupState を渡してあげましょう。
+
+`~/packages/runtime-core/component.ts`
+
+```ts
+export type InternalRenderFunction = {
+  (ctx: Data): VNodeChild; // 引数でctxを受け取れるように
+};
+```
+
+`~/packages/runtime-core/renderer.ts`
+
+```ts
+const setupRenderEffect = (
+  instance: ComponentInternalInstance,
+  initialVNode: VNode,
+  container: RendererElement
+) => {
+  const componentUpdateFn = () => {
+    const { render, setupState } = instance;
+    if (!instance.isMounted) {
+      // .
+      // .
+      // .
+      const subTree = (instance.subTree = normalizeVNode(render(setupState))); // setupStateを渡す
+      // .
+      // .
+      // .
+    } else {
+      // .
+      // .
+      // .
+      const nextTree = normalizeVNode(render(setupState)); // setupStateを渡す
+      // .
+      // .
+      // .
+    }
+  };
+};
+```
+
+ここまで来ればレンダリングできるようになっているはずです。確認してみましょう！
+
+![render_interpolation](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/render_interpolation.png)
+
+これにて初めてのバインディング、完です！
+
+## イベントハンドラ
 
 <!-- ちゃんと動いているようなのでコンパイラ実装を始める際に分割した 3 つのタスクを実装し終えました。やったね！ -->
