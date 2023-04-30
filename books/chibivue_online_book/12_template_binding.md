@@ -153,6 +153,8 @@ app.mount("#app");
 
 # テンプレートにバインドしたい
 
+## 方針
+
 今の状態だと、直接 DOM 操作をしているので、リアクティブシステムや仮想 DOM の恩恵を得ることができていません。  
 実際にはイベントハンドラであったり、テキストの内容はテンプレート部分に書きたいわけです。それでこそ宣言的 UI の嬉しさと言った感じですよね。  
 以下のような開発者インターフェースを目指します。
@@ -248,6 +250,86 @@ export const setupComponent = (instance: ComponentInternalInstance) => {
 };
 ```
 
-さて、コンパイラを実装する前に、setupState をどのようにしてテンプレートにバインディングするか方針について考えてみます。
+伴って、これ以降、setup で定義されるデータのことを`setupState`と呼ぶことにします。
+
+さて、コンパイラを実装する前に、setupState をどのようにしてテンプレートにバインディングするか方針について考えてみます。  
+テンプレートを実装する前までは以下のように setupState をバインディングしていました。
+
+```ts
+const app = createApp({
+  setup() {
+    const state = reactive({ message: "hello" });
+    return () => h("div", {}, [state.message]);
+  },
+});
+```
+
+まぁ、バインドというより普通に render 関数がクロージャを形成し変数を参照しているだけです。  
+しかし今回は、イメージ的には setup オプションと render 関数は別のものなので、どうにかして render 関数に setup のデータを渡す必要があります。
+
+```ts
+const app = createApp({
+  setup() {
+    const state = reactive({ message: "hello" });
+    return { state };
+  },
+
+  // これはrender関数に変換される
+  template: "<div>{{ state.message }}</div>",
+});
+```
+
+template は h 関数を使った render 関数として compile され、instance.render に突っ込まれるわけなので、イメージ的には以下のようなコードと同等になります。
+
+```ts
+const app = createApp({
+  setup() {
+    const state = reactive({ message: "hello" });
+    return { state };
+  },
+
+  render() {
+    return h("div", {}, [state.message]);
+  },
+});
+```
+
+当然、render 関数内では`state`という変数は定義されていません。  
+そこで、render 関数の引数として setupState を受け取るようにしてみましょう。
+
+```ts
+const app = createApp({
+  setup() {
+    const state = reactive({ message: "hello" });
+    return { state };
+  },
+
+  render(_ctx) {
+    return h("div", {}, [_ctx.state.message]);
+  },
+});
+```
+
+実際には、setupState だけではなく、props のデータや OptionsApi で定義されたデータにもアクセスできるようになる必要があるのですが、今回は一旦 setupState のデータのみ使える形で良しとします。  
+(この辺りの実装は最小構成部門では取り上げず、後の部門で取り上げます。)
+
+つまり以下のようなテンプレートは
+
+```html
+<div>
+  <p>{{ state.message }}</p>
+  <button @click="changeMessage">click me</button>
+</div>
+```
+
+以下のような関数にコンパイルするようにすれば良いわけです。
+
+```ts
+(_ctx) =>
+  h("div", {}, [
+    h("p", {}, [_ctx.state.message]),
+    h("button", { onClick: _ctx.changeMessage }, ["click me"]),
+  ]);
+```
 
 <!-- ちゃんと動いているようなのでコンパイラ実装を始める際に分割した 3 つのタスクを実装し終えました。やったね！ -->
