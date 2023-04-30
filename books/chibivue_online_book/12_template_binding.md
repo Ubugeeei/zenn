@@ -291,6 +291,32 @@ function parseInterpolation(
 }
 ```
 
+Text 中に `{{`が出現することもあるので parseText も少しだけいじります。
+
+```ts
+function parseText(context: ParserContext): TextNode {
+  const endTokens = ["<", "{{"]; // {{ が出現したらparseTextは終わり
+
+  let endIndex = context.source.length;
+
+  for (let i = 0; i < endTokens.length; i++) {
+    const index = context.source.indexOf(endTokens[i], 1);
+    if (index !== -1 && endIndex > index) {
+      endIndex = index;
+    }
+  }
+
+  const start = getCursor(context);
+  const content = parseTextData(context, endIndex);
+
+  return {
+    type: NodeTypes.TEXT,
+    content,
+    loc: getSelection(context, start),
+  };
+}
+```
+
 これまでパーサを実装してきた方にとっては特に難しいことはないはずです。`{{`を探し、`}}`が来るまで読み進めて AST を生成しているだけです。  
 `}}`が見つからなかった場合は undefined を返し、parseText への分岐でテキストとしてパースさせています。
 
@@ -618,7 +644,7 @@ const app = createApp({
       <br />
 
       <input @input="handleInput"/>
-      <p>{{ state.input }}</p>
+      <p>input value: {{ state.input }}</p>
 
       <style>
         .container {
