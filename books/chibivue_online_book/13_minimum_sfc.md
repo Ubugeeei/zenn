@@ -223,3 +223,6 @@ pnpm run dev
 ![sample_vite_plugin_source](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/sample_vite_plugin_source.png)
 
 ちゃんとソースコードが改変されていることがわかります。
+
+ここまでのソースコード:  
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/08-1_mininum_sfc_compiler
