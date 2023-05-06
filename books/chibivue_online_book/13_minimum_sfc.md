@@ -2,7 +2,7 @@
 title: "Single File Component で開発したい！"
 ---
 
-# SFC、どうやっって実現している？
+# SFC、どうやって実現している？
 
 ## 目標物
 
@@ -738,5 +738,8 @@ export default function vitePluginChibivue(): Plugin {
 ![compile_sfc_render](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/compile_sfc_render.png)
 
 上手くコンパイルできているようです。あとは同じ要領で、どうにかして script を引っこ抜いて default exports に突っ込めば OK です。
+
+ここまでのソースコード:  
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/08-3_mininum_sfc_compiler
 
 ### script 部分のコンパイル
