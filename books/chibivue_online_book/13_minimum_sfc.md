@@ -888,3 +888,266 @@ s.overwrite(9, 13, "こんにちは"); // 範囲を指定して上書き
 Babel にしろ magic-string にしろ、実際の使い方等は実装の段階で合わせて説明するのでなんとなくの理解で問題ないです。
 
 ## script の default export を書き換える
+
+今一度現在の目標を確認しておくと、
+
+```ts
+export default {
+  setup() {},
+  // その他のオプション
+};
+```
+
+というコードを、
+
+```ts
+const _sfc_main = {
+  setup() {},
+  // その他のオプション
+};
+
+export default { ..._sfc_main, render };
+```
+
+というふうに書き換えたいわけです。
+
+つまりは、元々のコードの export 文から良い感じに export 対象をを抜き出し、\_sfc_main とという変数に代入できるようになればゴールということです。
+
+まずは必要なライブラリをインストールします。
+
+```sh
+pwd # ~
+pnpm i @babel/parser magic-string
+```
+
+rewriteDefault.ts というファイルを作成します。
+
+```sh
+pwd # ~
+touch packages/compiler-sfc/rewriteDefault.ts
+```
+
+input に対象のソースコード、as に最終的にバインドしたい変数名を受け取れるようにしておきます。  
+戻り値として変換されたソースコードを返します。
+
+`~/packages/compiler-sfc/rewriteDefault.ts`
+
+```ts
+export function rewriteDefault(input: string, as: string): string {
+  // TODO:
+  return "";
+}
+```
+
+まず手始めとして、そもそも export の宣言が存在しない場合のハンドリングをしておきます。
+export が存在しないわけなので、からのオブジェクトをバインドして終了です。
+
+```ts
+const defaultExportRE = /((?:^|\n|;)\s*)export(\s*)default/;
+const namedDefaultExportRE = /((?:^|\n|;)\s*)export(.+)(?:as)?(\s*)default/s;
+
+export function rewriteDefault(input: string, as: string): string {
+  if (!hasDefaultExport(input)) {
+    return input + `\nconst ${as} = {}`;
+  }
+
+  // TODO:
+  return "";
+}
+
+export function hasDefaultExport(input: string): boolean {
+  return defaultExportRE.test(input) || namedDefaultExportRE.test(input);
+}
+```
+
+ここで Babel パーサと magic-string の登場です。
+
+```ts
+import { parse } from "@babel/parser";
+import MagicString from "magic-string";
+// .
+// .
+export function hasDefaultExport(input: string): boolean {
+  // .
+  // .
+  const s = new MagicString(input);
+  const ast = parse(input, {
+    sourceType: "module",
+  }).program.body;
+  // .
+  // .
+}
+```
+
+ここからは Babel パーサによって得られた JavaScript の AST(ast) を元に s を文字列操作していきます。
+少し長いですが、ソースコード内のコメントで補足の説明も入れていきます。
+基本的には AST を手繰っていって、type によって分岐処理を書いて magic-string のメソッドで s を操作していくだけです。
+
+```ts
+export function hasDefaultExport(input: string): boolean {
+  // .
+  // .
+  ast.forEach((node) => {
+    // default exportの場合
+    if (node.type === "ExportDefaultDeclaration") {
+      if (node.declaration.type === "ClassDeclaration") {
+        // `export default class Hoge {}` だった場合は、`class Hoge {}` に置き換える
+        s.overwrite(node.start!, node.declaration.id.start!, `class `);
+        // その上で、`const ${as} = Hoge;` というようなコードを末尾に追加してあげればOK.
+        s.append(`\nconst ${as} = ${node.declaration.id.name}`);
+      } else {
+        // それ以外の default exportは宣言部分を変数宣言に置き換えてあげればOk.
+        // eg 1) `export default { setup() {}, }`  ->  `const ${as} = { setup() {}, }`
+        // eg 2) `export default Hoge`  ->  `const ${as} = Hoge`
+        s.overwrite(node.start!, node.declaration.start!, `const ${as} = `);
+      }
+    }
+
+    // named export の場合でも宣言中に default exportが発生する場合がある.
+    // 主に3パターン
+    //   1. `export { default } from "source";`のような宣言の場合
+    //   2. `export { hoge as default }` from 'source' のような宣言の場合
+    //   3. `export { hoge as default }` のような宣言の場合
+    if (node.type === "ExportNamedDeclaration") {
+      for (const specifier of node.specifiers) {
+        if (
+          specifier.type === "ExportSpecifier" &&
+          specifier.exported.type === "Identifier" &&
+          specifier.exported.name === "default"
+        ) {
+          // `from`というキーワードがある場合
+          if (node.source) {
+            if (specifier.local.name === "default") {
+              // 1. `export { default } from "source";`のような宣言の場合
+              // この場合はimport文に抜き出して名前をつけてあげ、最終的な変数にバインドする
+              // eg) `export { default } from "source";`  ->  `import { default as __VUE_DEFAULT__ } from 'source'; const ${as} = __VUE_DEFAULT__`
+              const end = specifierEnd(input, specifier.local.end!, node.end!);
+              s.prepend(
+                `import { default as __VUE_DEFAULT__ } from '${node.source.value}'\n`
+              );
+              s.overwrite(specifier.start!, end, ``);
+              s.append(`\nconst ${as} = __VUE_DEFAULT__`);
+              continue;
+            } else {
+              // 2. `export { hoge as default }` from 'source' のような宣言の場合
+              // この場合は一度全てのspecifierをそのままimport文に書き換え、as defaultになっている変数を最終的な変数にバインドする
+              // eg) `export { hoge as default } from "source";`  ->  `import { hoge } from 'source'; const ${as} = hoge
+              const end = specifierEnd(
+                input,
+                specifier.exported.end!,
+                node.end!
+              );
+              s.prepend(
+                `import { ${input.slice(
+                  specifier.local.start!,
+                  specifier.local.end!
+                )} } from '${node.source.value}'\n`
+              );
+
+              // 3. `export { hoge as default }`のような宣言の場合
+              // この場合は単純に最終的な変数にバインドしてあげる
+              s.overwrite(specifier.start!, end, ``);
+              s.append(`\nconst ${as} = ${specifier.local.name}`);
+              continue;
+            }
+          }
+          const end = specifierEnd(input, specifier.end!, node.end!);
+          s.overwrite(specifier.start!, end, ``);
+          s.append(`\nconst ${as} = ${specifier.local.name}`);
+        }
+      }
+    }
+  });
+  // .
+  // .
+}
+
+// 宣言文の終端を算出する
+function specifierEnd(input: string, end: number, nodeEnd: number | null) {
+  // export { default   , foo } ...
+  let hasCommas = false;
+  let oldEnd = end;
+  while (end < nodeEnd!) {
+    if (/\s/.test(input.charAt(end))) {
+      end++;
+    } else if (input.charAt(end) === ",") {
+      end++;
+      hasCommas = true;
+      break;
+    } else if (input.charAt(end) === "}") {
+      break;
+    }
+  }
+  return hasCommas ? end : oldEnd;
+}
+```
+
+これで default export の書き換えができるようになりました。実際に plugin で使ってみましょう。
+
+```ts
+import type { Plugin } from "vite";
+import { createFilter } from "vite";
+import { parse, rewriteDefault } from "../../compiler-sfc";
+import { compile } from "../../compiler-dom";
+
+export default function vitePluginChibivue(): Plugin {
+  const filter = createFilter(/\.vue$/);
+
+  return {
+    name: "vite:chibivue",
+
+    transform(code, id) {
+      if (!filter(id)) return;
+
+      const outputs = [];
+      outputs.push("import * as ChibiVue from 'chibivue'");
+
+      const { descriptor } = parse(code, { filename: id });
+
+      // --------------------------- ここから
+      const SFC_MAIN = "_sfc_main";
+      const scriptCode = rewriteDefault(
+        descriptor.script?.content ?? "",
+        SFC_MAIN
+      );
+      outputs.push(scriptCode);
+      // --------------------------- ここまで
+
+      const templateCode = compile(descriptor.template?.content ?? "", {
+        isBrowser: false,
+      });
+      outputs.push(templateCode);
+
+      outputs.push("\n");
+      outputs.push(`export default { ...${SFC_MAIN}, render }`); // ここ
+
+      return { code: outputs.join("\n") };
+    },
+  };
+}
+```
+
+その前にちょっとだけ修正します。
+
+`~/packages/runtime-core/component.ts`
+
+```ts
+export const setupComponent = (instance: ComponentInternalInstance) => {
+  // .
+  // .
+  // .
+  // componentのrenderオプションをインスタンスに
+  const { render } = component;
+  if (render) {
+    instance.render = render as InternalRenderFunction;
+  }
+};
+```
+
+これでレンダリングができるようになっているはずです！！！
+
+![render_sfc](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/render_sfc.png)
+
+スタイルの対応をしていないのでスタイルが当たっていないですがこれでレンダリングはできるようになりました。
+
+## スタイルブロック
