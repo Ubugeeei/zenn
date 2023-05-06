@@ -36,17 +36,17 @@ export default {
     <p><b>chibivue</b> is the minimal Vue.js</p>
 
     <button @click="changeMessage">click me!</button>
-
-    <style>
-      .container {
-        height: 100vh;
-        padding: 16px;
-        background-color: #becdbe;
-        color: #2c3e50;
-      }
-    </style>
   </div>
 </template>
+
+<style>
+.container {
+  height: 100vh;
+  padding: 16px;
+  background-color: #becdbe;
+  color: #2c3e50;
+}
+</style>
 ```
 
 以下のような JS のコードに変換すれば良いのです。
@@ -71,17 +71,6 @@ export default {
       }),
       h("p", [h("b", "chibivue"), " is the minimal Vue.js"]),
       h("button", { onClick: _ctx.changeMessage }, "click me!"),
-      h(
-        "style",
-        `
-        .container {
-          height: 100vh;
-          padding: 16px;
-          background-color: #becdbe;
-          color: #2c3e50;
-        }
-      `
-      ),
     ]);
   },
 };
@@ -226,3 +215,157 @@ pnpm run dev
 
 ここまでのソースコード:  
 https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/08-1_mininum_sfc_compiler
+
+# SFC コンパイラを実装していく
+
+## 準備
+
+先ほど作ったサンプルのプラグインなのですが、もう不要なので消してしまいましょう
+
+```sh
+pwd # ~
+rm -rf ./plugin-sample
+```
+
+plugin の本体なのですが、本来これは vue/core の範囲外なので packages に`@extensions`というディレクトリを切ってそこに実装していきます。
+
+```sh
+pwd # ~
+mkdir -p packages/@extensions/vite-plugin-chibivue
+touch packages/@extensions/vite-plugin-chibivue/index.ts
+```
+
+`~/packages/@extensions/vite-plugin-chibivue/index.ts`
+
+```ts
+import type { Plugin } from "vite";
+
+export default function vitePluginChibivue(): Plugin {
+  return {
+    name: "vite:chibivue",
+
+    transform(code, id) {
+      return { code };
+    },
+  };
+}
+```
+
+ここから SFC のコンパイラを実装していくのですが、実態がないとイメージが湧きづらいかと思うので playground を実装してみて、動かしながらやっていこうかと思います。  
+簡単な SFC とその読み込みを行います。
+
+```sh
+pwd # ~
+touch playground/src/App.vue
+```
+
+`playground/src/App.vue`
+
+```vue
+<script>
+import { reactive } from "chibivue";
+export default {
+  setup() {
+    const state = reactive({ message: "Hello, chibivue!", input: "" });
+
+    const changeMessage = () => {
+      state.message += "!";
+    };
+
+    const handleInput = (e) => {
+      state.input = e.target?.value ?? "";
+    };
+
+    return { state, changeMessage, handleInput };
+  },
+};
+</script>
+
+<template>
+  <div class="container" style="text-align: center">
+    <h2>{{ state.message }}</h2>
+    <img
+      width="150px"
+      src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Vue.js_Logo_2.svg/1200px-Vue.js_Logo_2.svg.png"
+    />
+    <p><b>chibivue</b> is the minimal Vue.js</p>
+
+    <button @click="changeMessage">click me!</button>
+
+    <br />
+
+    <input @input="handleInput" />
+    <p>input value: {{ state.input }}</p>
+  </div>
+</template>
+
+<style>
+.container {
+  height: 100vh;
+  padding: 16px;
+  background-color: #becdbe;
+  color: #2c3e50;
+}
+</style>
+```
+
+`playground/src/main.ts`
+
+```ts
+import { createApp } from "chibivue";
+import App from "./App.vue";
+
+const app = createApp(App);
+
+app.mount("#app");
+```
+
+`playground/vite.config.js`
+
+```ts
+import { defineConfig } from "vite";
+import chibivue from "../../packages/@extensions/vite-plugin-chibivue";
+
+export default defineConfig({
+  resolve: {
+    alias: {
+      chibivue: `${process.cwd()}/../../packages`,
+    },
+  },
+  plugins: [chibivue()],
+});
+```
+
+この状態で起動してみましょう。
+
+![vite_error](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/vite_error.png)
+
+もちろんエラーになります。やったね(？)
+
+## 初めての SFC コンパイラ
+
+とりあえずエラーを解消していきましょう。いきなり完璧なものは目指しません。  
+まず、transform の対象を「\*.vue」に限定してあげましょう。
+vite から createFilter という関数が提供されているのでそれでフィルターを作ります。  
+`~/packages/@extensions/vite-plugin-chibivue/index.ts`
+
+```ts
+import type { Plugin } from "vite";
+import { createFilter } from "vite";
+
+export default function vitePluginChibivue(): Plugin {
+  const filter = createFilter(/\.vue$/);
+
+  return {
+    name: "vite:chibivue",
+
+    transform(code, id) {
+      if (!filter(id)) return;
+      return { code: `export default {}` };
+    },
+  };
+}
+```
+
+フィルターを作り、vue ファイルだった場合はファイル内容 `export default {}` に transform してみました。  
+おそらくエラーは消え、画面は何も表示されない感じになっているかと思います。
