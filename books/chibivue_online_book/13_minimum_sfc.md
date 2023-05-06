@@ -371,7 +371,7 @@ export default function vitePluginChibivue(): Plugin {
 フィルターを作り、vue ファイルだった場合はファイル内容 `export default {}` に transform してみました。  
 おそらくエラーは消え、画面は何も表示されない感じになっているかと思います。
 
-## パーサの実装 on compiler-sfc
+# パーサの実装 on compiler-sfc
 
 さて、これではただのその場しのぎなのでちゃんとした実装をしていきます。  
 vite-plugin での役割はあくまで vite を利用する際に vite で transform できるようにするためのものなので、パースやコンパイラは vue の本体にあります。  
@@ -618,9 +618,7 @@ export default function vitePluginChibivue(): Plugin {
 ここまでのソースコード:  
 https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/08-2_mininum_sfc_compiler
 
-## コンパイラの実装
-
-### template 部分のコンパイル
+# template 部分のコンパイル
 
 `descriptor.script.content` と `descriptor.template.content`にはそれぞれのソースコードが入っています。  
 これらを使って上手くコンパイルしたいです。template の方からやっていきましょう。  
@@ -742,4 +740,151 @@ export default function vitePluginChibivue(): Plugin {
 ここまでのソースコード:  
 https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/08-3_mininum_sfc_compiler
 
-### script 部分のコンパイル
+# script 部分のコンパイル
+
+さて、元々の SFC の script 部分は以下のようになっています。
+
+```ts
+export default {
+  setup() {},
+};
+```
+
+これらを先ほど生成した render 関数といい感じに mix して export したいのですが、どうにか
+
+```ts
+{
+  setup() {},
+}
+```
+
+の部分だけ取り出せないでしょうか？
+
+もしこの部分を取り出すことができたら、
+以下のようにしてあげれば良いことになります。
+
+```ts
+const _sfc_main = {
+  setup() {},
+};
+
+export default { ..._sfc_main, render };
+```
+
+## 外部ライブラリを使う
+
+上記のようなことをしたいのですが結論から言うと以下の 2 つのライブラリを使って楽に実装します。
+
+- @babel/parser
+- magic-string
+
+### Babel
+
+https://babeljs.io
+
+[What is Babel](https://babeljs.io/docs)
+
+こちらは普段 JavaScript を使っている方はよく聞くかも知れません。  
+Babel は JavaScript の後方互換バージョンに変換するために使用されるツールチェーンです。  
+簡単に言うと、JS から JS へのコンパイラ(トランスパイラ)です。  
+今回は Babel をコンパイラとしてだけではなく、パーサとして利用します。  
+Babel はコンパイラとしての役割を持つので、もちろん内部では AST に変換するためのパーサを実装しています。  
+そのパーサをライブラリとして利用ます。  
+さらっと AST という言葉を出しましたが、JavaScript ももちろん AST としての表現を持っています。  
+こちらに AST の仕様があります。(https://github.com/estree/estree)  
+上記の github の md ファイルを見てもらっても良いのですが、簡単に JavaScript の AST について説明しておくと、  
+まずプログラム全体は Program という AST ノードで表現されていて、Statement を配列で持ちます。(わかりやすいように TS の interface で表現しています。)
+
+```ts
+interface Program {
+  body: Statement[];
+}
+```
+
+Statement というのは日本で言うと「文」です。JavaScript は文の集まりです。具体的には「変数宣言文」や「if 文」、「for 文」、「ブロック」などが挙げられます。
+
+```ts
+interface Statement {}
+
+interface VariableDeclaration extends Statement {
+  /* 省略 */
+}
+
+interface IfStatement extends Statement {
+  /* 省略 */
+}
+
+interface ForStatement extends Statement {
+  /* 省略 */
+}
+
+interface BlockStatement extends Statement {
+  body: Statement[];
+}
+// 他にもたくさんある
+```
+
+そして、文というのは多くの場合「Expression(式)」を持ちます。式というのは変数に代入できる物だと考えてもらえらば良いです。具体的には「オブジェクト」や「2 項演算」、「関数呼び出し」などが挙げられます。
+
+```ts
+interface Expression {}
+
+interface BinaryExpression extends Expression {
+  operator: "+" | "-" | "*" | "/"; // 他にもたくさんあるが省略
+  left: Expression;
+  right: Expression;
+}
+
+interface ObjectExpression extends Expression {
+  properties: Property[]; // 省略
+}
+
+interface CallExpression extends Expression {
+  callee: Expression;
+  arguments: Expression[];
+}
+
+// 他にもたくさんある
+```
+
+if 文について考えると、このような構造をとることがわかります。
+
+```ts
+interface IfStatement extends Statement {
+  test: Expression; // 条件値
+  consequent: Statement; // 条件値がtrueの場合に実行される文
+  alternate: Statement | null; // 条件値がfalseの場合に実行される文
+}
+```
+
+このように、JavaScript の構文は上記のような AST にパースされるのです。既に chibivue のテンプレートのコンパイラを実装したみなさんにとっては分かりやすい話だと思います。(同じこと)
+
+なぜ Babel を使うのかというと、理由は２つあって、1 つは単純にめんどくさいからです。パーサを実装したことあるみなさんなら estree を見ながら JS のパーサを実装することも技術的には可能かも知れません。
+けど、とてもめんどくさいし、今回の「Vue の理解を深める」という点においてはあまり重要ではありません。もう一つの理由は本家 Vue もこの部分は Babel を使っているという点です。
+
+### magic-string
+
+https://github.com/rich-harris/magic-string
+
+もう一つ使いたいライブラリがあります。こちらも本家の Vue が使っているライブラリです。  
+こちらは文字列操作を便利にするライブラリです。
+
+```ts
+const input = "Hello";
+const s = new MagicString(input);
+```
+
+のようにインスタンスを生成し、そのインスタンスに生えている便利なメソッドを利用して文字列操作をしていきます。
+いくつか例をあげます。
+
+```ts
+s.append("!!!"); // 末尾に追加する
+s.prepend("message: "); // 先頭に追加する
+s.overwrite(9, 13, "こんにちは"); // 範囲を指定して上書き
+```
+
+特に無理して使う必要はないのですが、本家の Vue に合わせて使うことにします。
+
+Babel にしろ magic-string にしろ、実際の使い方等は実装の段階で合わせて説明するのでなんとなくの理解で問題ないです。
+
+## script の default export を書き換える
