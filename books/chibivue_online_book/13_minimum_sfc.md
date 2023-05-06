@@ -342,9 +342,7 @@ export default defineConfig({
 
 もちろんエラーになります。やったね(？)
 
-## 初めての SFC コンパイラ
-
-### エラーの解消
+## エラーの解消
 
 とりあえずエラーを解消していきましょう。いきなり完璧なものは目指しません。  
 まず、transform の対象を「\*.vue」に限定してあげましょう。
@@ -373,7 +371,7 @@ export default function vitePluginChibivue(): Plugin {
 フィルターを作り、vue ファイルだった場合はファイル内容 `export default {}` に transform してみました。  
 おそらくエラーは消え、画面は何も表示されない感じになっているかと思います。
 
-### パーサの実装 on compiler-sfc
+## パーサの実装 on compiler-sfc
 
 さて、これではただのその場しのぎなのでちゃんとした実装をしていきます。  
 vite-plugin での役割はあくまで vite を利用する際に vite で transform できるようにするためのものなので、パースやコンパイラは vue の本体にあります。  
@@ -616,3 +614,129 @@ export default function vitePluginChibivue(): Plugin {
 ![parse_sfc2](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/parse_sfc2.png)
 
 無事にパースできているようです。やったね！
+
+ここまでのソースコード:  
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/08-2_mininum_sfc_compiler
+
+## コンパイラの実装
+
+### template 部分のコンパイル
+
+`descriptor.script.content` と `descriptor.template.content`にはそれぞれのソースコードが入っています。  
+これらを使って上手くコンパイルしたいです。template の方からやっていきましょう。  
+テンプレートのコンパイラはすでに持っています。  
+しかし、以下のコードを見てもらえればわかるのですが、
+
+```ts
+export const generate = ({
+  children,
+}: {
+  children: TemplateChildNode[];
+}): string => {
+  return `return function render(_ctx) {
+  const { h } = ChibiVue;
+  return ${genNode(children[0])};
+}`;
+};
+```
+
+これは Function コンストラクタで new する前提の物になってしまっているので先頭に return がついてしまっています。
+SFC のコンパイラでは render 関数だけを生成したいので、コンパイラのオプションで分岐できるようにしましょう。
+コンパイラの第 2 引数としてオプションを受け取れるようにし、'isBrowser'というフラグを指定可能にします。
+この変数が true の時はランタイム上で new される前提のコードを出力し、false の場合は単にコードを生成します。
+
+```sh
+pwd # ~
+touch packages/compiler-core/options.ts
+```
+
+`packages/compiler-core/options.ts`
+
+```ts
+export type CompilerOptions = {
+  isBrowser?: boolean;
+};
+```
+
+`~/packages/compiler-dom/index.ts`
+
+```ts
+export function compile(template: string, option?: CompilerOptions) {
+  const defaultOption: Required<CompilerOptions> = { isBrowser: true };
+  if (option) Object.assign(defaultOption, option);
+  return baseCompile(template, defaultOption);
+}
+```
+
+`~/packages/compiler-core/compile.ts`
+
+```ts
+export function baseCompile(
+  template: string,
+  option: Required<CompilerOptions>
+) {
+  const parseResult = baseParse(template.trim());
+  const code = generate(parseResult, option);
+  return code;
+}
+```
+
+`~/packages/compiler-core/codegen.ts`
+
+```ts
+export const generate = (
+  {
+    children,
+  }: {
+    children: TemplateChildNode[];
+  },
+  option: Required<CompilerOptions>
+): string => {
+  return `${option.isBrowser ? "return " : ""}function render(_ctx) {
+  const { h } = ChibiVue;
+  return ${genNode(children[0])};
+}`;
+};
+```
+
+これで render 関数をコンパイルできるようになっていると思います。ブラウザの source で確認してみましょう。  
+ついでに import 文を足しておきました。output という配列にソースコードを詰めていく感じにも変更してます。
+
+```ts
+import type { Plugin } from "vite";
+import { createFilter } from "vite";
+import { parse } from "../../compiler-sfc";
+import { compile } from "../../compiler-dom";
+
+export default function vitePluginChibivue(): Plugin {
+  const filter = createFilter(/\.vue$/);
+
+  return {
+    name: "vite:chibivue",
+
+    transform(code, id) {
+      if (!filter(id)) return;
+
+      const outputs = [];
+      outputs.push("import * as ChibiVue from 'chibivue'\n");
+
+      const { descriptor } = parse(code, { filename: id });
+      const templateCode = compile(descriptor.template?.content ?? "", {
+        isBrowser: false,
+      });
+      outputs.push(templateCode);
+
+      outputs.push("\n");
+      outputs.push(`export default { render }`);
+
+      return { code: outputs.join("\n") };
+    },
+  };
+}
+```
+
+![compile_sfc_render](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/compile_sfc_render.png)
+
+上手くコンパイルできているようです。あとは同じ要領で、どうにかして script を引っこ抜いて default exports に突っ込めば OK です。
+
+### script 部分のコンパイル
