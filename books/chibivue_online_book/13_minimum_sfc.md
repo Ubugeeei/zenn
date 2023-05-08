@@ -1193,9 +1193,70 @@ import { msg } from "virtual:my-module";
 
 のように書くと`export const msg = "from virtual module"`が load されます。
 
-![参考](https://ja.vitejs.dev/guide/api-plugin.html#%E4%BB%AE%E6%83%B3%E3%83%A2%E3%82%B7%E3%82%99%E3%83%A5%E3%83%BC%E3%83%AB%E3%81%AE%E8%A6%8F%E7%B4%84)
+[参考](https://ja.vitejs.dev/guide/api-plugin.html#%E4%BB%AE%E6%83%B3%E3%83%A2%E3%82%B7%E3%82%99%E3%83%A5%E3%83%BC%E3%83%AB%E3%81%AE%E8%A6%8F%E7%B4%84)
 
 子の仕組みを使って SFC の style ブロックを仮想の css ファイルとして読み込むようにしてみます。  
 最初に言った通り、vite では css という拡張子のファイルを import すれば良いので、${SFC のファイル名}.css という仮想モジュールを作ることを考えてみます。
 
 ### SFC のスタイルブロックの内容で仮想モジュールを実装する
+
+今回は、たとえば「App.vue」というファイルがあったとき、その style 部分を「App.vue.css」という名前の仮想モジュールを実装することを考えてみます。  
+やることは単純で、`**.vue.css`という名前のファイルが読み込まれたら`.css`を除いたファイルパス(つまり通常の Vue ファイル)から SFC を`fs.readFileSync`で取得し、  
+パースして style タグの内容を取得し、それを code として返します。
+
+```ts
+export default function vitePluginChibivue(): Plugin {
+  //  ,
+  //  ,
+  //  ,
+  return {
+    //  ,
+    //  ,
+    //  ,
+    resolveId(id) {
+      // このidは実際には存在しないパスだが、loadで仮想的にハンドリングするのでidを返してあげる (読み込み可能だということにする)
+      if (id.match(/\.vue\.css$/)) return id;
+
+      // ここでreturnされないidに関しては、実際にそのファイルが存在していたらそのファイルが解決されるし、存在していなければ存在しないというエラーになる
+    },
+    load(id) {
+      // .vue.cssがloadされた (importが宣言され、読み込まれた) ときのハンドリング
+      if (id.match(/\.vue\.css$/)) {
+        const filename = id.replace(/\.css$/, "");
+        const content = fs.readFileSync("." + filename, "utf-8"); // 普通にSFCファイルを取得
+        const { descriptor } = parse(content, { filename }); //  SFCをパース
+
+        // contentをjoinsして結果とする。
+        const styles = descriptor.styles.map((it) => it.content).join("\n");
+        return { code: styles };
+      }
+    },
+
+    transform(code, id) {
+      if (!filter(id)) return;
+
+      const outputs = [];
+      outputs.push("import * as ChibiVue from 'chibivue'");
+      outputs.push(`import '${id}.css'`); // ${id}.cssのimport文を宣言しておく
+      //  ,
+      //  ,
+      //  ,
+    },
+  };
+}
+```
+
+さて、ブラウザで確認してみましょう。
+
+![load_virtual_css_module](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/load_virtual_css_module.png)
+
+ちゃんとスタイルが当たるようになっているようです。
+
+ブラウザの方でも、css が import され、.vue.css というファイルが仮想的に生成されているのが分かるかと思います。  
+![load_virtual_css_module2](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/load_virtual_css_module2.png)  
+![load_virtual_css_module3](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/load_virtual_css_module3.png)
+
+これで SFC が使えるようになりました！
+
+ここまでのソースコード:  
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/08-4_mininum_sfc_compiler
