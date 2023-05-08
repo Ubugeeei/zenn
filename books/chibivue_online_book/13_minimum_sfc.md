@@ -1151,3 +1151,51 @@ export const setupComponent = (instance: ComponentInternalInstance) => {
 スタイルの対応をしていないのでスタイルが当たっていないですがこれでレンダリングはできるようになりました。
 
 ## スタイルブロック
+
+### 仮想モジュール
+
+スタイルも対応してしまいます。vite では css という拡張子のファイルを import することでスタイルを読み込めるようになっています。
+
+```js
+import "app.css";
+```
+
+vite の仮想モジュールという機能を使って SFC から仮想的な CSS ファイルを作り、アウトプットの JS ファイルの import 文に追加する方針で実装してみます。  
+仮想モジュール、と聞くとなんだか難しいように聞こえますが、「実際には存在しないファイルをあたかも存在するようにインメモリに保持しておける」と捉えてもらえれば問題ないです。  
+vite では`load`と`resolve`というオプションを使って仮想モジュールを実現することができます。
+
+```ts
+export default function myPlugin() {
+  const virtualModuleId = "virtual:my-module";
+
+  return {
+    name: "my-plugin", // 必須、警告やエラーで表示されます
+    resolveId(id) {
+      if (id === virtualModuleId) {
+        return virtualModuleId;
+      }
+    },
+    load(id) {
+      if (id === virtualModuleId) {
+        return `export const msg = "from virtual module"`;
+      }
+    },
+  };
+}
+```
+
+resolve に解決したいモジュールの id を任意に設定し、load でその id をハンドリングすることによってモジュールを読み込むことができます。  
+上記の例だと、`virtual:my-module`というファイルは実際には存在しませんが、
+
+```ts
+import { msg } from "virtual:my-module";
+```
+
+のように書くと`export const msg = "from virtual module"`が load されます。
+
+![参考](https://ja.vitejs.dev/guide/api-plugin.html#%E4%BB%AE%E6%83%B3%E3%83%A2%E3%82%B7%E3%82%99%E3%83%A5%E3%83%BC%E3%83%AB%E3%81%AE%E8%A6%8F%E7%B4%84)
+
+子の仕組みを使って SFC の style ブロックを仮想の css ファイルとして読み込むようにしてみます。  
+最初に言った通り、vite では css という拡張子のファイルを import すれば良いので、${SFC のファイル名}.css という仮想モジュールを作ることを考えてみます。
+
+### SFC のスタイルブロックの内容で仮想モジュールを実装する
