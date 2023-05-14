@@ -16,3 +16,4 @@ chapters:
   - 12_template_binding
   - 13_minimum_sfc
   - 14_break
+  - 15_patch_keyed_children

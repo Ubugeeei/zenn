@@ -76,7 +76,7 @@ list は`["e", "f", "g"]`に更新したはずなのに、`d`が残ってしま�
 
 ![c1c2map_inserted](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/c1c2map_inserted.png)
 
-しかし、実際に差し込まれたのは`new element`で、比較は c1,c2 のそれぞれの l1,l2,l3,l4 同士で行いたいはずです。
+しかし、実際に差し込まれたのは`new element`で、比較は c1,c2 のそれぞれの li 1, li 2, li 3, li 4  同士で行いたいはずです。
 
 ![c1c2map_inserted_correct](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/c1c2map_inserted_correct.png)
 
