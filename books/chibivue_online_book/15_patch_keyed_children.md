@@ -76,7 +76,7 @@ list は`["e", "f", "g"]`に更新したはずなのに、`d`が残ってしま�
 
 ![c1c2map_inserted](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/c1c2map_inserted.png)
 
-しかし、実際に差し込まれたのは`new element`で、比較は c1,c2 のそれぞれの li 1, li 2, li 3, li 4  同士で行いたいはずです。
+しかし、実際に差し込まれたのは`new element`で、比較は c1,c2 のそれぞれの li 1, li 2, li 3, li 4 同士で行いたいはずです。
 
 ![c1c2map_inserted_correct](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/c1c2map_inserted_correct.png)
 
@@ -91,3 +91,33 @@ https://ja.vuejs.org/api/built-in-special-attributes.html#key
 いかにも、と言ったところです。よく、「v-for の key に index を指定するな」という話があると思いますが、まさに今現時点では暗黙的に key が index になっているがために上記のような問題が発生していました。(c2 の長さを基準に for を回し、その index を元に c1 と patch を行っている)
 
 # key 属性を元に patch しよう
+
+そしてこれらを実装しているのが、``という関数です。(本家 Vue で探してみましょう。)
+
+方針としては、まず新しい node の key と index のマップを生成します。
+
+```ts
+let i = 0;
+const l2 = c2.length;
+const e1 = c1.length - 1; // end index of prev node
+const e2 = l2 - 1; // end index of next node
+
+const s1 = i; // start index of prev node
+const s2 = i; // start index of next node
+
+const keyToNewIndexMap: Map<string | number | symbol, number> = new Map();
+for (i = s2; i <= e2; i++) {
+  const nextChild = (c2[i] = normalizeVNode(c2[i]));
+  if (nextChild.key != null) {
+    keyToNewIndexMap.set(nextChild.key, i);
+  }
+}
+```
+
+本家の Vue ではこの patchKeyedChildren は５のパートに分かれます。
+
+1. sync from start
+2. sync from end
+3. common sequence + mount
+4. common sequence + unmount
+5. unknown sequence
