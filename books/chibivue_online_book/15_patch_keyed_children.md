@@ -36,7 +36,7 @@ patch のループは c2 を基本としているわけなので、4 つめの�
 
 ![c1c2map_deleted](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/c1c2map_deleted.png)
 
-このようになった時、どうなるかというと、単純に 1~3 つ目の要素は更新され、4 つ目は消えずに c1 のものが残ってしまいます。
+このようになった時、どうなるかというと、単純に 1~3 つ目の要素は更新され、4 つ目は消えずの c1 のものが残ってしまいます。
 
 実際に動作を見てみましょう。
 
