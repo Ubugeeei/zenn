@@ -121,3 +121,11 @@ for (i = s2; i <= e2; i++) {
 3. common sequence + mount
 4. common sequence + unmount
 5. unknown sequence
+
+ですが、上の 4 つは最適化のようなものなので、機能的には最後の `unknown sequence` だけで動作可能します。
+なので、まずは`unknown sequence`の部分を読み進めて実装することにしましょう。
+
+まずは、要素の移動のことは忘れて、key を元に VNode を patch していきましょう。
+先ほど作った`keyToNewIndexMap`を利用して、n1 と n2 の組みを算出して patch します。
+
+この時点で、新しくマウントするものや、アンマウントする必要があればその処理も行ってしまいます。
