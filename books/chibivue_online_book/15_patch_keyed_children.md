@@ -127,5 +127,32 @@ for (i = s2; i <= e2; i++) {
 
 まずは、要素の移動のことは忘れて、key を元に VNode を patch していきましょう。
 先ほど作った`keyToNewIndexMap`を利用して、n1 と n2 の組みを算出して patch します。
-
 この時点で、新しくマウントするものや、アンマウントする必要があればその処理も行ってしまいます。
+
+ざっくりいうとこういうこと ↓ (かなり省略しています。詳しくは vue/core の renderer.ts を読んでみてください。)
+
+```ts
+const toBePatched = e2 + 1;
+const newIndexToOldIndexMap = new Array(toBePatched);
+for (i = 0; i < toBePatched; i++) newIndexToOldIndexMap[i] = 0;
+
+for (i = 0; i <= e1; i++) {
+  const prevChild = c1[i];
+  newIndex = keyToNewIndexMap.get(prevChild.key);
+  if (newIndex === undefined) {
+    unmount(prevChild);
+  } else {
+    newIndexToOldIndexMap[newIndex] = i + 1;
+    patch(prevChild, c2[newIndex] as VNode, container);
+  }
+}
+
+for (i = toBePatched - 1; i >= 0; i--) {
+  const nextIndex = i;
+  const nextChild = c2[nextIndex] as VNode;
+  if (newIndexToOldIndexMap[i] === 0) {
+    // mount new
+    patch(null, nextChild, container, anchor);
+  }
+}
+```
