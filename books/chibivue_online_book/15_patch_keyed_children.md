@@ -133,17 +133,18 @@ for (i = s2; i <= e2; i++) {
 
 ```ts
 const toBePatched = e2 + 1;
-const newIndexToOldIndexMap = new Array(toBePatched);
+const newIndexToOldIndexMap = new Array(toBePatched); // 新indexと旧indexとのマップ
 for (i = 0; i < toBePatched; i++) newIndexToOldIndexMap[i] = 0;
 
+// e1 (旧 len)を元にループ
 for (i = 0; i <= e1; i++) {
   const prevChild = c1[i];
   newIndex = keyToNewIndexMap.get(prevChild.key);
-  if (newIndex === undefined) {
+  if (newIndex === undefined) { // 新しいに存在しなければアンマウント
     unmount(prevChild);
   } else {
-    newIndexToOldIndexMap[newIndex] = i + 1;
-    patch(prevChild, c2[newIndex] as VNode, container);
+    newIndexToOldIndexMap[newIndex] = i + 1; // マップ形成
+    patch(prevChild, c2[newIndex] as VNode, container); // パッチ処理
   }
 }
 
@@ -151,7 +152,7 @@ for (i = toBePatched - 1; i >= 0; i--) {
   const nextIndex = i;
   const nextChild = c2[nextIndex] as VNode;
   if (newIndexToOldIndexMap[i] === 0) {
-    // mount new
+    // マップが存在しない(初期値のまま)のであれば新しくマウントするということになる。　(真にはあって、旧にはないということなので)
     patch(null, nextChild, container, anchor);
   }
 }
