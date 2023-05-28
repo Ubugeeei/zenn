@@ -20,3 +20,4 @@ chapters:
   - 16_bit_flags
   - 17_render_fragments
   - 18_scheduler
+  - 19_patch_other_attrs
