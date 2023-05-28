@@ -18,3 +18,4 @@ chapters:
   - 14_break
   - 15_patch_keyed_children
   - 16_bit_flags
+  - 17_render_fragments
