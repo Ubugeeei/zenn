@@ -140,7 +140,8 @@ for (i = 0; i < toBePatched; i++) newIndexToOldIndexMap[i] = 0;
 for (i = 0; i <= e1; i++) {
   const prevChild = c1[i];
   newIndex = keyToNewIndexMap.get(prevChild.key);
-  if (newIndex === undefined) { // 新しいに存在しなければアンマウント
+  if (newIndex === undefined) {
+    // 新しいに存在しなければアンマウント
     unmount(prevChild);
   } else {
     newIndexToOldIndexMap[newIndex] = i + 1; // マップ形成
@@ -157,3 +158,215 @@ for (i = toBePatched - 1; i >= 0; i--) {
   }
 }
 ```
+
+# 要素の移動
+
+## 手法
+
+### Node.insertBefore
+
+現時点では、key の一致のよってそれぞれの要素を更新しているだけなので、移動していた場合は所定の位置に移動させる処理を書かなくてはなりません。
+
+まず、どうやって要素を移動するかについてですが、nodeOps の insert に anchor の指定をします。
+anchor というのは名前の通りアンカーで、runtime-dom に実装した nodeOps を見てもらえればわかるのですが、この insert メソッドは`insertBefore`というメソッドで実装されています。
+
+```ts
+export const nodeOps: Omit<RendererOptions, "patchProp"> = {
+  // .
+  // .
+  // .
+  insert: (child, parent, anchor) => {
+    parent.insertBefore(child, anchor || null);
+  },
+};
+```
+
+このメソットは第二引数に node を渡すことで、その node の直前に insert されるようになります。  
+https://developer.mozilla.org/en-US/docs/Web/API/Node/insertBefore
+
+これを利用して実際の DOM を移動させます。
+
+### LIS (Longest Increasing Subsequence)
+
+そして、どのように移動のアルゴリズムを書いていくかですが、こちらはちょっとだけ複雑です。  
+DOM 操作というのは JS を動かすのに比べてかなりコストが高いので、なるべく余計な移動がないように移動回数は最小限にしたいのです。  
+そこで、「最長増加部分列 (Longest Increasing Subsequence)」というものを利用します。  
+これがどういうものかというと、名前の通りなんですが、最長の増加部分列です。  
+増加部分列というのは、例えば以下のような配列があったとき、
+
+```
+[2, 4, 1, 7, 5, 6]
+```
+
+増加部分列は以下のようにいくつか存在します。
+
+```
+[2, 4]
+[2, 5]
+.
+.
+[2, 4, 7]
+[2, 4, 5]
+.
+.
+[2, 4, 5, 6]
+.
+.
+[1, 7]
+.
+.
+[1, 5, 6]
+```
+
+増加している部分列です。このうち、最長のものが「最長増加部分列」です。  
+つまり、今回で言うと、`[2, 4, 5, 6]`が最長増加部分列となります。
+そして、Vue ではこの 2, 4, 5, 6 に該当する index を結果の配列として扱っています。　(つまり `[0, 1, 4, 5]`)。
+
+ちなみにこんな感じの関数です。
+
+```ts
+function getSequence(arr: number[]): number[] {
+  const p = arr.slice();
+  const result = [0];
+  let i, j, u, v, c;
+  const len = arr.length;
+  for (i = 0; i < len; i++) {
+    const arrI = arr[i];
+    if (arrI !== 0) {
+      j = result[result.length - 1];
+      if (arr[j] < arrI) {
+        p[i] = j;
+        result.push(i);
+        continue;
+      }
+      u = 0;
+      v = result.length - 1;
+      while (u < v) {
+        c = (u + v) >> 1;
+        if (arr[result[c]] < arrI) {
+          u = c + 1;
+        } else {
+          v = c;
+        }
+      }
+      if (arrI < arr[result[u]]) {
+        if (u > 0) {
+          p[i] = result[u - 1];
+        }
+        result[u] = i;
+      }
+    }
+  }
+  u = result.length;
+  v = result[u - 1];
+  while (u-- > 0) {
+    result[u] = v;
+    v = p[v];
+  }
+  return result;
+}
+```
+
+これをどう利用するかというと、newIndexToOldIndexMap から最長増加部分列を算出し、それを基準にして、それ以外の node を insertBefore で差し込んでいきます。
+
+## 具体例
+
+ちょっとわかりづらいので具体例です。
+
+c1 と c2 という二つの vnode の配列を考えます。c1 が更新前で c2 が更新後で、それぞれが持つ子供はそれぞれ key 属性を持っています。(実際には key 以外の情報を持っています。)
+
+```js
+c1 = [{ key: "a" }, { key: "b" }, { key: "c" }, { key: "d" }];
+c2 = [{ key: "a" }, { key: "b" }, { key: "d" }, { key: "c" }];
+```
+
+これらを元にまずは keyToNewIndexMap を生成します。(key と、それに対する c2 の index の map)
+※ 以下は先ほど紹介したコードです。
+
+```ts
+const keyToNewIndexMap: Map<string | number | symbol, number> = new Map();
+for (i = 0; i <= e2; i++) {
+  const nextChild = (c2[i] = normalizeVNode(c2[i]));
+  if (nextChild.key != null) {
+    keyToNewIndexMap.set(nextChild.key, i);
+  }
+}
+
+// keyToNewIndexMap = { a: 0, b: 1, d: 2, c: 3 }
+```
+
+続いて newIndexToOldIndexMap を生成します。
+※ 以下は先ほど紹介したコードです。
+
+```ts
+// 初期化
+
+const toBePatched = c2.length;
+const newIndexToOldIndexMap = new Array(toBePatched); // 新indexと旧indexとのマップ
+for (i = 0; i < toBePatched; i++) newIndexToOldIndexMap[i] = 0;
+
+// newIndexToOldIndexMap = [0, 0, 0, 0]
+```
+
+```ts
+// patchをしつつmove用にnewIndexToOldIndexMapを生成する
+
+// e1 (旧 len)を元にループ
+for (i = 0; i <= e1; i++) {
+  const prevChild = c1[i];
+  newIndex = keyToNewIndexMap.get(prevChild.key);
+  if (newIndex === undefined) {
+    // 新しいに存在しなければアンマウント
+    unmount(prevChild);
+  } else {
+    newIndexToOldIndexMap[newIndex] = i + 1; // マップ形成
+    patch(prevChild, c2[newIndex] as VNode, container); // パッチ処理
+  }
+}
+
+// newIndexToOldIndexMap = [1, 2, 4, 3]
+```
+
+そして、得られた newIndexToOldIndexMap から最長増加部分列を取得します。(ここから新実装)
+
+```ts
+const increasingNewIndexSequence = getSequence(newIndexToOldIndexMap);
+// increasingNewIndexSequence  = [0, 1, 3]
+```
+
+```ts
+j = increasingNewIndexSequence.length - 1;
+for (i = toBePatched - 1; i >= 0; i--) {
+  const nextIndex = i;
+  const nextChild = c2[nextIndex] as VNode;
+  const anchor =
+    nextIndex + 1 < l2 ? (c2[nextIndex + 1] as VNode).el : parentAnchor; // ※ parentAnchor はとりあえず引数で受け取った anchor だと思ってもらえれば。
+
+  if (newIndexToOldIndexMap[i] === 0) {
+    // newIndexToOldIndexMap は初期値が 0 なので、0 の場合は古い要素への map が存在しない、つまり新しい要素だというふうに判定している。
+    patch(null, nextChild, container, anchor);
+  } else {
+    // i と increasingNewIndexSequence[j] が一致しなければ move する
+    if (j < 0 || i !== increasingNewIndexSequence[j]) {
+      move(nextChild, container, anchor);
+    } else {
+      j--;
+    }
+  }
+}
+```
+
+# 実際に実装してみよう。
+
+さて、方針についてはざっと説明したので実際に `patchKeyedChildren` を実装してみましょう。
+Todo だけまとめておきます。
+
+1. anchor をバケツリレーできるように (move のための insert で使うので)
+2. c2 を元に key と index の map を用意する
+3. key の map を元に c2 の index と c1 の index の map を用意する  
+   この段階で、c1 ベースのループと c2 ベースのループで patch 処理をしておく (move はまだ)
+4. 3 で得た map を元に最長増加部分列を求める
+5. 4 で得た部分列と c2 を元に move する
+
+ここからは 本家 Vue の実装を見てもらってもいいですし、もちろん chibivue を参考にしてもらっても良いです。
+(おすすめなは本家 Vue を実際に読みながらです。)
