@@ -16,8 +16,8 @@ VNode にはいろんな種類のものがあります。例えば、今実装�
 今のところ、`type === Text`,や`typeof type === "string"`, `typeof type === "object"`などで分岐をおこなっています。
 
 これらをいちいち判定するのは非効率ですし、本家の実装に倣ってビットで表現することにしてみましょう。
-Vue ではこれらのビットは`ShapeFlags`と呼ばれています。その名の通り、VNode の Shape を表すものです。
-
+Vue ではこれらのビットは`ShapeFlags`と呼ばれています。その名の通り、VNode の Shape を表すものです。  
+(厳密には Vue ではこの ShapeFlags と Text や Fragment などの Symbol を使って VNode の種類を判別しています)  
 https://github.com/vuejs/core/blob/main/packages/shared/src/shapeFlags.ts
 
 ビットフラグがどういうものかというと、数値の各ビットを特定のフラグとしてみなすというものです。
