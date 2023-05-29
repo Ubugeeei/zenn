@@ -61,3 +61,8 @@
 - keep-alive
 - typescript  
   -> 7/2
+
+## NOTE:
+
+- template ref?
+- ssr
