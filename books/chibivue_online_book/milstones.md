@@ -19,7 +19,8 @@
 - computed api
 - watch api
   - imm  
-  -> 6/4
+    -> 6/4
+- array broken changing
 
 ## ★ Basic Component System 部門
 
@@ -28,21 +29,21 @@
 - slot
   - default
   - named  
-  -> 6/10
+    -> 6/10
 - options api
 
 ## ★ Basic Template Compiler 部門
 
 - render component
   - slot  
-  -> 6/11
+    -> 6/11
 - directive
   - v-on
   - v-bind
   - v-for
   - v-if
   - v-model  
-  -> 6/18
+    -> 6/18
 
 ## ★ Basic SFC Compiler 部門
 
@@ -50,7 +51,8 @@
 - compiler macro
   - define props
   - define emits  
-  -> 6/25
+    -> 6/25
+
 ## ★ Web Application Essentials 部門 (付録)
 
 - router
