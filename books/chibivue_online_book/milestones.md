@@ -19,7 +19,7 @@
 - computed api
 - watch api
   - imm  
-    -> 6/4
+    -> 6/10
 - array broken changing
 
 ## ★ Basic Component System 部門
@@ -29,7 +29,6 @@
 - slot
   - default
   - named  
-    -> 6/10
 - options api
 
 ## ★ Basic Template Compiler 部門
