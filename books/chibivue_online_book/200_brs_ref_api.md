@@ -276,6 +276,3 @@ app.mount("#app");
 
 ここまでのソースコード:  
 https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/brs-1-4_to_refs
-
-- readonly
-- unRef
