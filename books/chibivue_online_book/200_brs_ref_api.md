@@ -141,7 +141,7 @@ app.mount("#app");
 
 ### triggerRef
 
-前述の通り、shallow ref が持つ value はリアクティブではないので、変更を加えてもエフェクトがトリガーされることはありません。  
+前述の通り、shallow ref が持つ value は reactive オブジェクトではないので、変更を加えてもエフェクトがトリガーされることはありません。  
 しかし、value 自体はオブジェクトなので変更されています。  
 そこで、強制的にトリガーさせる api が存在します。それが triggerRef です。
 
@@ -196,7 +196,51 @@ app.mount("#app");
 ここまでのソースコード:  
 https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/brs-1-2_shallow-ref_api
 
-- unRef
-- toRef
+# toRef
+
+toRef は reactive オブジェクトのプロパティへの ref を生成する api です。
+
+https://vuejs.org/api/reactivity-utilities.html#toref
+
+props の特定のプロパティを ref に変換したりする際によく利用します。
+
+```ts
+const count = toRef(props, "count");
+console.log(count.value);
+```
+
+toRef によって作られた ref は元の reactive オブジェクトと同期され、
+この ref に変更を加えると元の reactive オブジェクトも更新され、元の reactive オブジェクトに変更があるとこの ref も更新されます.
+
+```ts
+import { createApp, h, reactive, toRef } from "chibivue";
+
+const app = createApp({
+  setup() {
+    const state = reactive({ count: 0 });
+    const stateCountRef = toRef(state, "count");
+
+    return () =>
+      h("div", {}, [
+        h("p", {}, [`state.count: ${state.count}`]),
+        h("p", {}, [`stateCountRef.value: ${stateCountRef.value}`]),
+        h("button", { onClick: () => state.count++ }, ["updateState"]),
+        h("button", { onClick: () => stateCountRef.value++ }, ["updateRef"]),
+      ]);
+  },
+});
+
+app.mount("#app");
+```
+
+ソースコードを読みつつ実装していきましょう！  
+
+※ v3.3 からは toRef に normalization の機能が追加されました。chibivueではこの機能を実装していません。  
+詳しくは公式ドキュメントのシグネチャをチェックしてみてください! (https://vuejs.org/api/reactivity-utilities.html#toref)
+
+ここまでのソースコード:  
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/brs-1-3_to_ref
+
 - toRefs
 - readonly
+- unRef
