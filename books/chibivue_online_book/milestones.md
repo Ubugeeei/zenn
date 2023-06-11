@@ -11,6 +11,8 @@
 - class  
   -> 6/3
 
+NOTE: innerHTML / textContent については再考
+
 ## ★ Reactive System 部門
 
 - effect scope
@@ -28,7 +30,7 @@
 - lifecycle hooks
 - slot
   - default
-  - named  
+  - named
 - options api
 
 ## ★ Basic Template Compiler 部門
