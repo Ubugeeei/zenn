@@ -233,14 +233,49 @@ const app = createApp({
 app.mount("#app");
 ```
 
-ソースコードを読みつつ実装していきましょう！  
+ソースコードを読みつつ実装していきましょう！
 
-※ v3.3 からは toRef に normalization の機能が追加されました。chibivueではこの機能を実装していません。  
+※ v3.3 からは toRef に normalization の機能が追加されました。chibivue ではこの機能を実装していません。  
 詳しくは公式ドキュメントのシグネチャをチェックしてみてください! (https://vuejs.org/api/reactivity-utilities.html#toref)
 
 ここまでのソースコード:  
 https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/brs-1-3_to_ref
 
-- toRefs
+# toRefs
+
+reactive オブジェクトの全てのプロパティの ref を生成します。
+
+https://vuejs.org/api/reactivity-utilities.html#torefs
+
+```ts
+import { createApp, h, reactive, toRefs } from "chibivue";
+
+const app = createApp({
+  setup() {
+    const state = reactive({ foo: 1, bar: 2 });
+    const stateAsRefs = toRefs(state);
+
+    return () =>
+      h("div", {}, [
+        h("p", {}, [`[state]: foo: ${state.foo}, bar: ${state.bar}`]),
+        h("p", {}, [
+          `[stateAsRefs]: foo: ${stateAsRefs.foo.value}, bar: ${stateAsRefs.bar.value}`,
+        ]),
+        h("button", { onClick: () => state.foo++ }, ["update state.foo"]),
+        h("button", { onClick: () => stateAsRefs.bar.value++ }, [
+          "update stateAsRefs.bar.value",
+        ]),
+      ]);
+  },
+});
+
+app.mount("#app");
+```
+
+こちらは toRef の実装を使って簡単に実装できるかと思います。
+
+ここまでのソースコード:  
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/brs-1-4_to_refs
+
 - readonly
 - unRef
