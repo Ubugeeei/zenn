@@ -37,15 +37,61 @@ class と style には複数のバインディング方法があります。
 ```
 
 これらを実現するには、Basic Template Compiler 部門で説明する `transform` という概念が必要になります。  
-本家 Vue の設計に則らなければどこに実装してもいいのですが、本書では 本家 Vue の設計に則りたいためここではスキップします。  
+本家 Vue の設計に則らなければどこに実装してもいいのですが、本書では 本家 Vue の設計に則りたいためここではスキップします。
 
+# innerHTML / textContent
 
-# DOM
+innerHTML と textContent については他の Props と比べて少し特殊です。
+というのもこの Prop を持つ要素が子要素を持っていた場合、unmount する必要があります。
 
-## innerHTML / textContent
+TODO: 書く
 
-## value
+<!-- 以下の例を見てみましょう。
 
-### bool 値
+```ts
+const Child = {
+  setup() {
+    return () => h("span", {}, "initial message");
+  },
+};
 
-### number 値
+const App = {
+  setup() {
+    const message = ref(undefined);
+
+    return () =>
+      h("div", [
+        h("p", { innerHTML: message.value }, [Child]),
+        h(
+          "button",
+          {
+            onClick: () => {
+              message.value = "hello";
+            },
+          },
+          "update"
+        ),
+      ]);
+  },
+};
+
+export default App;
+```
+
+初回レンダリング時は message は undefined なので、innerHTML には特に何もセットされず、Child コンポーネントがマウントされます。
+
+ボタンをクリックすると innerHTML に `"hello"` が入ることになるのですが、この時、既にマウントされている Child コンポーネントはアンマウントする必要があります。
+
+これは textContent にも同じことが言えます。
+
+最近の Vue でこのコードを試してもらえればわかるのですが、innerHTML と textContent を props としてもつ要素が子要素を持つこと
+なので、あまり考える必要はないっちゃないのですが、一応 unmount するように実装しましょう。 -->
+
+# DOM Props の更新と value の型の微調整
+
+まず、DOM の属性として更新されるべきものを列挙しておく必要があります。
+removeAttribute / setAttribute で更新されるべきものと `el[key] = value` のように更新されるべきものを分けます。
+
+また、DOM Props の値として使用できる型に制限がある場合はそれに合わせてキャストしておく必要があります。  
+`const type = typeof el[key]`により型を取得し、patch 関数に入ってきた value をそれに合わせてキャストします。  
+また、キャストだけではなく、そもそも削除としてみなすような値の場合は removeAttribute します。例えば、patch の key が id で value が空文字だった場合です。
