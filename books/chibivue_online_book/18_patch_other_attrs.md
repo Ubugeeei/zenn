@@ -10,7 +10,20 @@ title: "対応できていない Props のパッチ"
 
 注目したいのは、runtime-dom/modules の実装です。
 
-# class / style
+# 新旧の比較
+
+現状だと n2 の props を元にしか更新ができていません。  
+n1 と n2 を元に更新しましょう。
+
+```ts
+const oldProps = n1.props || {};
+const newProps = n2.props || {};
+```
+
+n1 に存在していて n2n に存在しない props は削除です。  
+また、両者に存在していても値が変わっていなければ patch する必要はないのでスキップします。
+
+# class / style (注意)
 
 class と style には複数のバインディング方法があります。
 
