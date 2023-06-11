@@ -13,7 +13,7 @@
 
 NOTE: innerHTML / textContent については再考
 
-## ★ Reactive System 部門
+## ★ Basic Reactive System 部門
 
 - effect scope
 - ref api  

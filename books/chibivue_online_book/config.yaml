@@ -20,3 +20,4 @@ chapters:
   - 16_bit_flags
   - 17_scheduler
   - 18_patch_other_attrs
+  - 19_brs_effect_scope
