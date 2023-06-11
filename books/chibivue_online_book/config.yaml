@@ -20,4 +20,8 @@ chapters:
   - 16_bvd_bit_flags
   - 17_bvd_scheduler
   - 18_bvd_patch_other_attrs
-  - 19_brs_effect_scope
+  - 19_brs_ref_api
+  - 20_brs_computed_watch
+  - 21_brs_other_apis
+  - 22_brs_array_instrumentations
+

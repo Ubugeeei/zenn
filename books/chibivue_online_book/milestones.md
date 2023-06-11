@@ -15,7 +15,6 @@ NOTE: innerHTML / textContent については再考
 
 ## ★ Basic Reactive System 部門
 
-- effect scope
 - ref api  
   -> 6/3
 - computed api
@@ -23,6 +22,7 @@ NOTE: innerHTML / textContent については再考
   - imm  
     -> 6/10
 - array broken changing
+- effect scope
 
 ## ★ Basic Component System 部門
 
