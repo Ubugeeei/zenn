@@ -2,20 +2,20 @@ title: "Vue.js自作 (タイトル未定)"
 topics: ["Vue", "仮想DOM", "コンパイラ", "リアクティブシステム", "自作"]
 published: false
 chapters:
-  - 01_about
-  - 02_what_is_vue
-  - 03_vue_core_components
-  - 04_setup_project
-  - 05_create_app_api
-  - 06_simple_h_function
-  - 07_minimum_reactive
-  - 08_minimum_virtual_dom
-  - 09_minimum_component
-  - 10_minimum_template_compiler
-  - 11_more_complex_parser
-  - 12_template_binding
-  - 13_minimum_sfc
-  - 14_break
+  - 001_about
+  - 002_what_is_vue
+  - 003_vue_core_components
+  - 004_setup_project
+  - 005_create_app_api
+  - 006_simple_h_function
+  - 007_minimum_reactive
+  - 008_minimum_virtual_dom
+  - 009_minimum_component
+  - 010_minimum_template_compiler
+  - 011_more_complex_parser
+  - 012_template_binding
+  - 013_minimum_sfc
+  - 014_break
   - 100_bvd_patch_keyed_children
   - 110_bvd_bit_flags
   - 120_bvd_scheduler
