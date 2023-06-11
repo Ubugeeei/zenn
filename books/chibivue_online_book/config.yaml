@@ -16,12 +16,12 @@ chapters:
   - 12_template_binding
   - 13_minimum_sfc
   - 14_break
-  - 15_bvd_patch_keyed_children
-  - 16_bvd_bit_flags
-  - 17_bvd_scheduler
-  - 18_bvd_patch_other_attrs
-  - 19_brs_ref_api
-  - 20_brs_computed_watch
-  - 21_brs_other_apis
-  - 22_brs_array_instrumentations
+  - 100_bvd_patch_keyed_children
+  - 110_bvd_bit_flags
+  - 120_bvd_scheduler
+  - 130_bvd_patch_other_attrs
+  - 200_brs_ref_api
+  - 220_brs_computed_watch
+  - 220_brs_other_apis
+  - 230_brs_array_instrumentations
 
