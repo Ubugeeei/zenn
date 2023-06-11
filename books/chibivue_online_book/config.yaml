@@ -16,8 +16,8 @@ chapters:
   - 12_template_binding
   - 13_minimum_sfc
   - 14_break
-  - 15_patch_keyed_children
-  - 16_bit_flags
-  - 17_scheduler
-  - 18_patch_other_attrs
+  - 15_bvd_patch_keyed_children
+  - 16_bvd_bit_flags
+  - 17_bvd_scheduler
+  - 18_bvd_patch_other_attrs
   - 19_brs_effect_scope
