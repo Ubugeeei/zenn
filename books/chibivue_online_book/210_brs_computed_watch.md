@@ -1,8 +1,6 @@
-[Prev](https://github.com/Ubugeeei/chibivue/blob/main/books/japanese/200_brs_ref_api.md) | [Next](https://github.com/Ubugeeei/chibivue/blob/main/books/japanese/220_brs_other_apis.md)
-
 ---
-
-## title: "computed / watch api"
+title: "computed / watch api"
+---
 
 # computed のおさらい (と実装)
 
@@ -31,11 +29,9 @@ function computed<T>(
 
 <!-- まずは読み取り専用の方から考えてみましょう。 -->
 
-computedは
+computed は
 
 - computed
 - watch
   - options
 - watchEffect
-
-[Prev](https://github.com/Ubugeeei/chibivue/blob/main/books/japanese/200_brs_ref_api.md) | [Next](https://github.com/Ubugeeei/chibivue/blob/main/books/japanese/220_brs_other_apis.md)
