@@ -52,10 +52,13 @@ class RefImpl<T> {
   }
 
   set value(newVal) {
-    this._value = isObject(v) ? reactive(v) : v;
+    this._value = toReactive(v);
     triggerRefValue(this);
   }
 }
+
+const toReactive = <T extends unknown>(value: T): T =>
+  isObject(value) ? reactive(value) : value;
 ```
 
 実際にソースコードを見ながら ref を実装してみましょう！  
@@ -86,6 +89,55 @@ app.mount("#app");
 https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/brs-1_ref_api
 
 # shallowRef
+
+さて、続けてどんどん ref 周りの aip を実装していきます。  
+先ほど、ref の性質として「value プロパティにオブジェクトが割り当てられた際は value プロパティの値は reactive オブジェクトになる」というものを紹介しましたが、この性質を持たないのが shallowRef です。
+
+> Unlike ref(), the inner value of a shallow ref is stored and exposed as-is, and will not be made deeply reactive. Only the .value access is reactive.
+
+(引用: https://vuejs.org/api/reactivity-advanced.html#shallowref)
+
+やることは非常に単純で、RefImpl の実装はそのまま使い、`toReactive`の部分をスキップします。  
+ソースコードを読みながら実装していきましょう！
+
+以下のようなソースコードが動かせるようになれば OK です！
+
+```ts
+import { createApp, h, shallowRef } from "chibivue";
+
+const app = createApp({
+  setup() {
+    const state = shallowRef({ count: 0 });
+
+    return () =>
+      h("div", {}, [
+        h("p", {}, [`count: ${state.value.count}`]),
+
+        h(
+          "button",
+          {
+            onClick: () => {
+              state.value = { count: state.value.count + 1 };
+            },
+          },
+          ["increment"]
+        ),
+
+        h(
+          "button", // clickしても描画は更新されない
+          {
+            onClick: () => {
+              state.value.count++;
+            },
+          },
+          ["not trigger ..."]
+        ),
+      ]);
+  },
+});
+
+app.mount("#app");
+```
 
 - triggerRef
 - unRef
