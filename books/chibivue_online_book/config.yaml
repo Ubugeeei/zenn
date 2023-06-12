@@ -21,8 +21,8 @@ chapters:
   - 120_bvd_scheduler
   - 130_bvd_patch_other_attrs
   - 200_brs_ref_api
-  - 205_brs_reactive_flags
   - 210_brs_computed_watch
+  # - 215_brs_reactive_flags
   - 220_brs_computed_watch
   - 220_brs_other_apis
   - 230_brs_array_instrumentations
