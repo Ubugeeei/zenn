@@ -42,6 +42,8 @@ app.mount("#app");
 そこで、スケジューラを実装します。スケジューラというのはあるタスクに対する実行順番であったり、実行を管理するものです。
 Vue のスケジューラの役割の一つとして、リアクティブな作用をキューで管理し、まとめられるものはまとめる、というのがあります。
 
+## キュー管理によるスケジューリング
+
 具体的には キュー をもち、ジョブを管理します。ジョブは id を持っており、キューに新しくジョブがエンキューされる際に、既に同一の id を持ったジョブが存在していた場合に上書きしてしまいます。
 
 ```ts
@@ -70,7 +72,74 @@ export function queueJob(job: SchedulerJob) {
 
 uid といっても単にインクリメントによって得られる識別子です。
 
-実際にソースコードを読みながらスケジューラを実装してみましょう !
+## ReactiveEffect とスケジューラ
+
+現在、ReactiveEffect は以下のようなインターフェースになっています。(一部省略)
+
+```ts
+class ReactiveEffect {
+  deps: Dep[] = [];
+  public fn: () => T,
+
+  run() {}
+}
+```
+
+スケジューラの実装に伴って少し変えてみます。  
+現在、作用として fn に関数を登録しているのですが、今回は「能動的に実行する作用」と「受動的に実行される作用」に分けてみます。  
+Reactive な作用として扱うものは、作用を設定した側で能動的に実行される場合と、dep に追加された後で、何らかの外部のアクションによって trigger され受動的に実行される場合があります。  
+後者の作用は不特定多数の deps に追加され、不特定多数に trigger されるので、スケジューリングの対応が必要です。(逆にいえば能動的(明示的)に呼ぶならばそのような対応は必要ない)
+
+具体例を考えてみましょう。今実際に renderer の setupRenderEffect では以下のような実装があるかと思います。
+
+```ts
+const effect = (instance.effect = new ReactiveEffect(() => componentUpdateFn));
+const update = (instance.update = () => effect.run());
+update();
+```
+
+ここで生成した effect という reactiveEffect はのちに setup の実行によって getter が走った reactive なオブジェクトに track されるわけですが、これは明らかにスケジューリングの実装が必要です。(バラバラにいろんなところから trigger されるため)  
+しかし、ここで`update()`を呼び出していることに関してはそのまま作用を実行するだけでいいはずなので、スケジューリングの実装は必要ありません。  
+「え？じゃあ componentUpdateFn を直接呼び出せばいいんじゃないの？」と思うかも知れませんが、run の実装をよく思い出してください。componentUpdateFn を呼び出すだけでは activeEffect が設定されません。  
+そこで、「能動的に実行する作用」と「受動的に実行される作用(スケジューラが必要な作用)」を分けてもつように変えてみましょう。
+
+このチャプターでの最終的なインターフェースとしては、以下のようになります。
+
+```ts
+// ReactiveEffectの第 1 引数が能動的な作用, 第 2 引数が受動的な作用
+const effect = (instance.effect = new ReactiveEffect(componentUpdateFn, () =>
+  queueJob(update)
+));
+const update: SchedulerJob = (instance.update = () => effect.run());
+update.id = instance.uid;
+update();
+```
+
+実装的には、ReactiveEffect に fn とは別に scheduler という関数をもち、trigger では scheduler を優先して実行するようにします。
+
+```ts
+export class ReactiveEffect<T = any> {
+  public deps: Dep[] = [];
+  constructor(
+    public fn: () => T,
+    public scheduler: EffectScheduler | null = null
+  );
+}
+```
+
+```ts
+function triggerEffect(effect: ReactiveEffect) {
+  if (effect.scheduler) {
+    effect.scheduler();
+  } else {
+    effect.run(); // なければ通常の作用を実行する
+  }
+}
+```
+
+---
+
+さて、キュー管理によるスケジューリングと作用の分類わけを実際にソースコードを読みながら実装してみましょう !
 
 # nextTick が欲しい
 
