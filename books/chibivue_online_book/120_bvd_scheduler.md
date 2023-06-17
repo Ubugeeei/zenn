@@ -240,3 +240,6 @@ app.mount("#app");
 ![next_tick](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/next_tick.png)
 
 さて、実際に今のスケジューラの実装を`currentFlushPromise`を保持しておくような実装に書き換えて、nextTick を実装してみましょう!
+
+ここまでのソースコード:  
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/130-bvd-4_next_tick
