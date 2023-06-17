@@ -118,6 +118,8 @@ update();
 実装的には、ReactiveEffect に fn とは別に scheduler という関数をもち、trigger では scheduler を優先して実行するようにします。
 
 ```ts
+export type EffectScheduler = (...args: any[]) => any;
+
 export class ReactiveEffect<T = any> {
   public deps: Dep[] = [];
   constructor(
@@ -140,6 +142,9 @@ function triggerEffect(effect: ReactiveEffect) {
 ---
 
 さて、キュー管理によるスケジューリングと作用の分類わけを実際にソースコードを読みながら実装してみましょう !
+
+ここまでのソースコード:  
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/120-bvd-3_scheduler
 
 # nextTick が欲しい
 
