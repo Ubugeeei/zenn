@@ -187,4 +187,60 @@ export function watch<T>(
 }
 ```
 
-- watchEffect
+ここまでのソースコード:  
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/210-brs-2-3_watch
+
+## watch の その他の api
+
+ベースができてしまえば、後は拡張するだけです。これも特に解説は必要ないでしょう。
+
+- ref の監視
+  ```ts
+  const count = ref(0);
+  watch(count, () => {
+    /** some effects */
+  });
+  ```
+- 複数の source の監視
+
+  ```ts
+  const count = ref(0);
+  const count2 = ref(0);
+  const count3 = ref(0);
+  watch([count, count2, count3], () => {
+    /** some effects */
+  });
+  ``;
+  ```
+
+- immediate
+
+  ```ts
+  const count = ref(0);
+  watch(
+    count,
+    () => {
+      /** some effects */
+    },
+    { immediate: true }
+  );
+  ```
+
+- deep
+
+  ```ts
+  const state = ref({ props: { count: 0 } });
+  watch(
+    state,
+    () => {
+      /** some effects */
+    },
+    { deep: true }
+  );
+  ```
+
+# watchEffect
+
+```
+
+```
