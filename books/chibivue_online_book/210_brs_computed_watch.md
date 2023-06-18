@@ -135,15 +135,56 @@ const app = createApp({
 app.mount("#app");
 ```
 
-
 ここまでのソースコード:  
 https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/210-brs-2-1_computed  
-https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/210-brs-2-2_computed_setter  (setter込みはこちら)
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/210-brs-2-2_computed_setter (setter 込みはこちら)
 
-# Watch
+# Watch の実装
 
+watch にもいろんな形式の api があります。まずは最も単純な、getter 関数によって監視するような api を実装してみましょう。
+まずは、以下のようなコードが動くことを目指します。
 
+```ts
+import { createApp, h, reactive, watch } from "chibivue";
 
-- watch
-  - options
+const app = createApp({
+  setup() {
+    const state = reactive({ count: 0 });
+    watch(
+      () => state.count,
+      () => alert("state.count was changed!")
+    );
+
+    return () =>
+      h("div", {}, [
+        h("p", {}, [`count: ${state.count}`]),
+        h("button", { onClick: () => state.count++ }, ["update state"]),
+      ]);
+  },
+});
+
+app.mount("#app");
+```
+
+watch の実装は reactivity ではなく、runtime-core の方に実装していきます (apiWatch.ts)
+
+さまざまな api が混在しているので、少し複雑に見えますが、範囲を絞ればとても単純なことです。  
+目標とする api(watch 関数)のシグネチャを以下に実装しておくので、是非実装してみてください。  
+今までリアクティビティの知識を培ってきたみなさんなら実装できると思います！
+
+```ts
+export type WatchEffect = (onCleanup: OnCleanup) => void;
+
+export type WatchSource<T = any> = () => T;
+
+type OnCleanup = (cleanupFn: () => void) => void;
+
+export function watch<T>(
+  source: WatchSource<T>,
+  cb: (newValue: T, oldValue: T) => void
+) {
+  // TODO:
+}
+```
+
 - watchEffect
