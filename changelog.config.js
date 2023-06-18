@@ -8,6 +8,7 @@ module.exports = {
     "update",
     "typo",
     "link",
+    "wip",
     "style",
     "tweak",
     "other",
@@ -35,6 +36,11 @@ module.exports = {
       description: "update link",
       value: "link",
       emoji: "🔗",
+    },
+    wip: {
+      description: "work in progress",
+      value: "wip",
+      emoji: "🚧",
     },
     style: {
       description: "update book styles (format, order, etc.)",
