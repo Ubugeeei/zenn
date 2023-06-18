@@ -135,7 +135,15 @@ const app = createApp({
 app.mount("#app");
 ```
 
-- computed
+
+ここまでのソースコード:  
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/210-brs-2-1_computed  
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/210-brs-2-2_computed_setter  (setter込みはこちら)
+
+# Watch
+
+
+
 - watch
   - options
 - watchEffect
