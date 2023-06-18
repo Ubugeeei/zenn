@@ -138,9 +138,11 @@ app.mount("#app");
 ここまでのソースコード:  
 https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/210-brs-2-1_computed  
 (setter 込みはこちら):  
-https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/210-brs-2-2_computed_setter 
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/210-brs-2-2_computed_setter
 
 # Watch の実装
+
+https://vuejs.org/api/reactivity-core.html#watch
 
 watch にもいろんな形式の api があります。まずは最も単純な、getter 関数によって監視するような api を実装してみましょう。
 まずは、以下のようなコードが動くことを目指します。
@@ -227,21 +229,34 @@ https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/210-brs-2-3_w
   );
   ```
 
-- deep
+※ ⚠️ WIP
 
-  ```ts
-  const state = ref({ props: { count: 0 } });
-  watch(
-    state,
-    () => {
-      /** some effects */
-    },
-    { deep: true }
-  );
-  ```
+- reactive object
+- deep
+- flush
+
+ここまでのソースコード:  
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/210-brs-2-4_watch_api_extends
 
 # watchEffect
 
+https://vuejs.org/api/reactivity-core.html#watcheffect
+
+watch の実装を使えば watchEffect の実装は簡単です。
+
+```ts
+const count = ref(0);
+
+watchEffect(() => console.log(count.value));
+// -> logs 0
+
+count.value++;
+// -> logs 1
 ```
 
-```
+イメージてには immediate のような実装をすれば OK です。
+
+ここまでのソースコード:  
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/210-brs-2-4_watch_effect
+
+# Effect のクリーンナップ
