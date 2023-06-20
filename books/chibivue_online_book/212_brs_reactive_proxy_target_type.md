@@ -173,14 +173,13 @@ export function reactive<T extends object>(target: T): T {
 
 ## TemplateRefs を実装してみる
 
-Todo: toTypeString を利用した制限の実装と、それをもとに TemplateRefs の実装をする
-
-<!--
-# Template Refs
+せっかく Ref に HTML 要素を入れられるようになったので、TemplateRef を実装してみましょう。
 
 ref は ref 属性を利用することで template への参照を取ることができます。
 
 https://vuejs.org/guide/essentials/template-refs.html
+
+目標は以下のようなコードが動くようになることです。
 
 ```ts
 import { createApp, h, ref } from "chibivue";
@@ -211,8 +210,11 @@ export interface VNode<HostNode = any> {
   // .
   // .
   key: string | number | symbol | null;
-  ref?: Ref; // これ
+  ref: Ref | null; // これ
   // .
   // .
 }
-``` -->
+```
+
+本家の実装でいうと、setRef という関数です。探して、読んで、実装をしてみましょう！  
+本家の方では配列で ref を持ったり、$ref でアクセスできるようにしたりと色々複雑になっていますが、とりあえず上記のコードが動く程度のものを目指してみましょう。
