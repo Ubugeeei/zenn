@@ -23,6 +23,5 @@ chapters:
   - 200_brs_ref_api
   - 210_brs_computed_watch
   # - 215_brs_reactive_flags
-  - 212_brs_reactive_proxy_target_type
-  - 220_brs_array_instrumentations
+  - 212_brs_reactive_proxy_handlers
   - 230_brs_other_apis

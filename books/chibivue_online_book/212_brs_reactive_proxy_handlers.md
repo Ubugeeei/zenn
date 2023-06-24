@@ -1,8 +1,8 @@
 ---
-title: "リアクティブにするオブジェクトとしないオブジェクト"
+title: "様々な Reactive Proxy Handler"
 ---
 
-# 問題点
+# reactive にしたくないオブジェクト
 
 さて、ここでは現状のリアクティブシステムのある問題について解決していきます。  
 まずは以下のコードを動かしてみてください。
@@ -138,10 +138,6 @@ function targetTypeMap(rawType: string) {
   switch (rawType) {
     case "Object":
     case "Array":
-    case "Map":
-    case "Set":
-    case "WeakMap":
-    case "WeakSet":
       return TargetType.COMMON;
     default:
       return TargetType.INVALID;
@@ -171,7 +167,7 @@ export function reactive<T extends object>(target: T): T {
 
 ![focus_in_element](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/focus_in_element.png)
 
-## TemplateRefs を実装してみる
+# TemplateRefs を実装してみる
 
 せっかく Ref に HTML 要素を入れられるようになったので、TemplateRef を実装してみましょう。
 
@@ -252,4 +248,56 @@ const app = createApp({
 });
 
 app.mount("#app");
+```
+
+# ネストしたオブジェクトに対応する
+
+まずは以下のソースコードをご覧ください。
+
+```ts
+import { createApp, h, reactive } from "chibivue";
+
+const app = createApp({
+  setup() {
+    const state = reactive({ count: 0, nested: { count: 0 }, list: ["item"] });
+
+    return () =>
+      h("div", {}, [
+        h("p", {}, [`state.count: ${state.count}`]),
+        h("button", { onClick: () => state.count++ }, ["update state"]),
+        h("p", {}, [`state.nested.count: ${state.nested.count}`]),
+        h("button", { onClick: () => state.nested.count++ }, [
+          "update state.nested",
+        ]),
+        h("p", {}, [`state2.list: ${state.list}`]),
+        h("button", { onClick: () => state.list.push("item") }, [
+          "update state2.list",
+        ]),
+      ]);
+  },
+});
+
+app.mount("#app");
+```
+
+実は今の reactive の実装は不十分で、ネストしたオブジェクトや配列に対してリアクティビティを実装できていません。
+
+修正箇所は単純で、以下のように getter でオブジェクトかどうかを判定し、オブジェクトの場合は reactive にしてあげます。
+
+```ts
+export const mutableHandlers: ProxyHandler<object> = {
+  get(target: object, key: string | symbol, receiver: object) {
+    track(target, key);
+
+    const res = Reflect.get(target, key, receiver);
+    if (isObject(res)) {
+      return reactive(res);
+    }
+
+    return res;
+  },
+  // .
+  // .
+  // .
+};
 ```
