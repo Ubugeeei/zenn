@@ -22,6 +22,6 @@ chapters:
   - 130_bvd_patch_other_attrs
   - 200_brs_ref_api
   - 210_brs_computed_watch
-  # - 215_brs_reactive_flags
   - 212_brs_reactive_proxy_handlers
+  - 220_brs_effect_scope
   - 230_brs_other_apis
