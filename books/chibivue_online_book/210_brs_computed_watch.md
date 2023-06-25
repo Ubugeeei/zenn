@@ -229,13 +229,29 @@ https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/210-brs-2-3_w
   );
   ```
 
-※ ⚠️ WIP
+- deep
+
+  ```ts
+  const state = reactive({ count: 0 });
+  watch(
+    () => state,
+    () => {
+      /** some effects */
+    },
+    { deep: true }
+  );
+  ```
 
 - reactive object
-- deep
-- flush
 
-ここまでのソースコード:  
+  ```ts
+  const state = reactive({ count: 0 });
+  watch(state, () => {
+    /** some effects */
+  }); // automatically in deep mode
+  ```
+
+ここまでのソースコード:
 https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/210-brs-2-4_watch_api_extends
 
 # watchEffect
