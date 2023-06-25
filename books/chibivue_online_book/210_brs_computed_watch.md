@@ -275,4 +275,6 @@ count.value++;
 ここまでのソースコード:  
 https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/210-brs-2-4_watch_effect
 
-# Effect のクリーンナップ
+---
+
+※ クリーンアップについては別のチャプターで行います。

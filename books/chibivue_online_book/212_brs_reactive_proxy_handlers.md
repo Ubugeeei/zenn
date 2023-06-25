@@ -112,10 +112,11 @@ app.mount("#app");
 
 ```ts
 // shared/general.ts
-export const objectToString = Object.prototype.toString;
+export const objectToString = Object.prototype.toString; // isMapやisSetなどで既出
 export const toTypeString = (value: unknown): string =>
   objectToString.call(value);
 
+// 今回追加する関数
 export const toRawType = (value: unknown): string => {
   return toTypeString(value).slice(8, -1);
 };
@@ -335,7 +336,6 @@ export function toRaw<T>(observed: T): T {
 ちなみに、この toRaw 関数は API としても提供されている関数です。
 
 https://ja.vuejs.org/api/reactivity-advanced.html#toraw
-
 
 ここまでのソースコード:  
 https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/210-brs-3-3_proxy_handler_improvement

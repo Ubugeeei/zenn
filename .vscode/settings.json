@@ -4,6 +4,7 @@
     "hoge",
     "hyperscript",
     "keyof",
+    "unwatch",
     "vnode"
   ]
 }
