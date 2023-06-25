@@ -335,3 +335,7 @@ export function toRaw<T>(observed: T): T {
 ちなみに、この toRaw 関数は API としても提供されている関数です。
 
 https://ja.vuejs.org/api/reactivity-advanced.html#toraw
+
+
+ここまでのソースコード:  
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/210-brs-3-3_proxy_handler_improvement
