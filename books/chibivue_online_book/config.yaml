@@ -25,3 +25,4 @@ chapters:
   - 212_brs_reactive_proxy_handlers
   - 220_brs_effect_scope
   - 230_brs_other_apis
+  - 300_bcs_lifecycle_hooks
