@@ -505,6 +505,5 @@ app.mount("#app");
 
 これでかなりの HTML に対応することができました!
 
-ここまでのソースコード
-
-https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/03_simple_h_function
+ここまでのソースコード:  
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/003_simple_h_function

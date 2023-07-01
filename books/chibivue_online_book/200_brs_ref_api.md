@@ -86,7 +86,7 @@ app.mount("#app");
 ```
 
 ここまでのソースコード:  
-https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/brs-1_ref_api
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/200-brs-1-1_ref_api
 
 # shallowRef
 
@@ -194,7 +194,7 @@ app.mount("#app");
 ```
 
 ここまでのソースコード:  
-https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/brs-1-2_shallow-ref_api
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/200-brs-1-2_shallow-ref_api
 
 # toRef
 
@@ -239,7 +239,7 @@ app.mount("#app");
 詳しくは公式ドキュメントのシグネチャをチェックしてみてください! (https://vuejs.org/api/reactivity-utilities.html#toref)
 
 ここまでのソースコード:  
-https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/brs-1-3_to_ref
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/200-brs-1-3_to_ref
 
 # toRefs
 
@@ -275,4 +275,4 @@ app.mount("#app");
 こちらは toRef の実装を使って簡単に実装できるかと思います。
 
 ここまでのソースコード:  
-https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/brs-1-4_to_refs
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/200-brs-1-4_to_refs
