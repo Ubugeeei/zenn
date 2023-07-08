@@ -142,6 +142,71 @@ export type SetupContext = {
 
 ## expose
 
-ここまでできたら emit 以外の SetupContext も実装してみます。
-
+ここまでできたら emit 以外の SetupContext も実装してみます。  
 今回は例として、expose を実装してみます。
+
+expose は、パブリックなプロパティを明示できる関数です。  
+以下のような開発者インターフェースを目指しましょう。
+
+```ts
+const Child = defineComponent({
+  setup(_, { expose }) {
+    const count = ref(0);
+    const count2 = ref(0);
+    expose({ count });
+    return { count, count2 };
+  },
+  template: `<p>hello</p>`,
+});
+
+const Child2 = defineComponent({
+  setup() {
+    const count = ref(0);
+    const count2 = ref(0);
+    return { count, count2 };
+  },
+  template: `<p>hello</p>`,
+});
+
+const app = createApp({
+  setup() {
+    const child = ref();
+    const child2 = ref();
+
+    const log = () => {
+      console.log(
+        child.value.count,
+        child.value.count2, // cannot access
+        child2.value.count,
+        child2.value.count2
+      );
+    };
+
+    return () =>
+      h("div", {}, [
+        h(Child, { ref: child }, []),
+        h(Child2, { ref: child2 }, []),
+        h("button", { onClick: log }, ["log"]),
+      ]);
+  },
+});
+```
+
+expose を使用しないコンポーネントでは今まで通り、デフォルトで全てが public です。
+
+方向性としては、インスタンス内に `exposed` というオブジェクトを持つことにし、ここに値が設定されていれば templateRef に関してはこのオブジェクトを ref に渡す感じです。
+
+```ts
+export interface ComponentInternalInstance {
+  // .
+  // .
+  // .
+  exposed: Record<string, any> | null; // 追加
+}
+```
+
+そしてここにオブジェクトを登録できるように expose 関数を実装していきましょう。
+
+## emit のバリデーション
+
+# ProxyRef
