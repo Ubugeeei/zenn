@@ -110,3 +110,38 @@ https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/320-bcs-compo
 ![infer_component_types](https://raw.githubusercontent.com/Ubugeeei/chibivue/main/books/images/infer_component_types.png)
 
 # setupContext
+
+https://ja.vuejs.org/api/composition-api-setup.html#setup-context
+
+Vue には setupContext という概念があります。これは setup 内に公開される context で、emit や expose などが挙げられます。
+
+現時点では emit は仕えるようにはなっているものの、少々雑に実装してしまっています。
+
+```ts
+const setupResult = component.setup(instance.props, {
+  emit: instance.emit,
+});
+```
+
+SetupContext というインターフェースをきちんと定義して、インスタンスが持つオブジェクトとして表現しましょう。
+
+```ts
+export interface ComponentInternalInstance {
+  // .
+  // .
+  // .
+  setupContext: SetupContext | null; // 追加
+}
+
+export type SetupContext = {
+  emit: (e: string, ...args: any[]) => void;
+};
+```
+
+そして、インスタンスを生成する際に setupContext を生成し、setup 関数を実行する際の第二引数にこのオブジェクトを渡すようにしましょう。
+
+## expose
+
+ここまでできたら emit 以外の SetupContext も実装してみます。
+
+今回は例として、expose を実装してみます。
