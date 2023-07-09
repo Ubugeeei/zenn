@@ -27,4 +27,5 @@ chapters:
   - 230_brs_other_apis
   - 300_bcs_lifecycle_hooks
   - 310_bcs_provide_inject
-  - 315_bcs_component_proxy_setup_context
+  - 320_bcs_component_proxy_setup_context
+  - 330_bcs_component_slot
