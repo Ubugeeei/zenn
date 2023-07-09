@@ -14,8 +14,8 @@ https://vuejs.org/guide/extras/render-function.html#passing-slots
 
 ```ts
 const MyComponent = defineComponent({
-  setup(props, { slots }) {
-    return () => [h("div", slots.default())];
+  setup(_, { slots }) {
+    return () => h("div", {}, [slots.default()]);
   },
 });
 
@@ -33,6 +33,9 @@ const app = createApp({
 h 関数も第 3 引数として配列だけではなく、レンダー関数を受け取れるような形にして、レンダー関数が来た場合にはコンポーネントのインスタンスを生成するタイミングでインスタンスの default slot として設定してあげます。  
 とりあえずここまで実装してみましょう！
 
-ここまでのソースコード:
+(children の normalize 実装に伴って ShapeFlags を少々変更しています。)
+
+ここまでのソースコード:  
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/330-bcs-component_slot
 
 # 名前付きスロットの実装
