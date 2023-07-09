@@ -207,6 +207,83 @@ export interface ComponentInternalInstance {
 
 そしてここにオブジェクトを登録できるように expose 関数を実装していきましょう。
 
-## emit のバリデーション
+# ProxyRefs
 
-# ProxyRef
+このチャプターで proxy や exposedProxy を実装してきましたが、実は少々本家の Vue とは違う部分があります。  
+それは、「ref は unwrap される」という点です。(proxy の場合は proxy というより setupState がこの性質を持っています。)
+
+これらは ProxyRefs というプロキシで実装されていて、handler は`shallowUnwrapHandlers`という名前で実装されています。  
+これにより、template を記述する際や proxy を扱う際に ref 特有の value の冗長さを排除できるようになっています。
+
+```ts
+const shallowUnwrapHandlers: ProxyHandler<any> = {
+  get: (target, key, receiver) => unref(Reflect.get(target, key, receiver)),
+  set: (target, key, value, receiver) => {
+    const oldValue = target[key];
+    if (isRef(oldValue) && !isRef(value)) {
+      oldValue.value = value;
+      return true;
+    } else {
+      return Reflect.set(target, key, value, receiver);
+    }
+  },
+};
+```
+
+```vue
+<template>
+  <!-- <p>{{ count.value }}</p>  このように書く必要はない -->
+  <p>{{ count }}</p>
+</template>
+```
+
+ここまで実装すると以下のようなコードが動くようになるはずです。
+
+```ts
+import { createApp, defineComponent, h, ref } from "chibivue";
+
+const Child = defineComponent({
+  setup(_, { expose }) {
+    const count = ref(0);
+    const count2 = ref(0);
+    expose({ count });
+    return { count, count2 };
+  },
+  template: `<p>child {{ count }} {{ count2 }}</p>`,
+});
+
+const Child2 = defineComponent({
+  setup() {
+    const count = ref(0);
+    const count2 = ref(0);
+    return { count, count2 };
+  },
+  template: `<p>child2 {{ count }} {{ count2 }}</p>`,
+});
+
+const app = createApp({
+  setup() {
+    const child = ref();
+    const child2 = ref();
+
+    const increment = () => {
+      child.value.count++;
+      child.value.count2++; // cannot access
+      child2.value.count++;
+      child2.value.count2++;
+    };
+
+    return () =>
+      h("div", {}, [
+        h(Child, { ref: child }, []),
+        h(Child2, { ref: child2 }, []),
+        h("button", { onClick: increment }, ["increment"]),
+      ]);
+  },
+});
+
+app.mount("#app");
+```
+
+ここまでのソースコード:  
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/325-bcs-setup_context
