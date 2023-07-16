@@ -50,7 +50,7 @@ export const setupComponent = (instance: ComponentInternalInstance) => {
 };
 ```
 
-Options API では this を頻繁に扱うような開発者インターフェースになっています。
+Options API では this を頻繁に扱うような開発者インタフェースになっています。
 
 ```ts
 const App = defineComponent({
@@ -188,7 +188,7 @@ type ComponentOptions<D = {}, M extends MethodOptions = MethodOptions> = {
 
 実際には props であったり、computed, inject など様々な型を推論する必要がありますが、基本原理はこれと同じです。  
 ぱっと見ジェネリクスがたくさんあったり、型の変換(inject から key だけを取り出したり)が混ざっているのでウッとなってしまうかもしれませんが落ち着いて原理に戻っと実装すれば大丈夫なはずです。  
-本書のコードでは本家の Vue をインスパイアして、`CreateComponentPublicInstance`という抽象化を一段階挟んでいたり、`ComponentPublicInstanceConstructor`と言う型を実装していますが、あまり気にしないでください。(興味があればそこも読んでみてください！)
+本書のコードでは本家の Vue をインスパイアして、`CreateComponentPublicInstance`という抽象化を一段階挟んでいたり、`ComponentPublicInstanceConstructor`と言う型を実装していますが、あまり気にしないでください。(興味があればそこも読んでみてください！　)
 
 ここまでのソースコード:  
 https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/340-bcs-option_api

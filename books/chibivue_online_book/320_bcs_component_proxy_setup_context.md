@@ -123,7 +123,7 @@ const setupResult = component.setup(instance.props, {
 });
 ```
 
-SetupContext というインターフェースをきちんと定義して、インスタンスが持つオブジェクトとして表現しましょう。
+SetupContext というインタフェースをきちんと定義して、インスタンスが持つオブジェクトとして表現しましょう。
 
 ```ts
 export interface ComponentInternalInstance {
@@ -146,7 +146,7 @@ export type SetupContext = {
 今回は例として、expose を実装してみます。
 
 expose は、パブリックなプロパティを明示できる関数です。  
-以下のような開発者インターフェースを目指しましょう。
+以下のような開発者インタフェースを目指しましょう。
 
 ```ts
 const Child = defineComponent({
