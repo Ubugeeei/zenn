@@ -19,6 +19,10 @@
     "zenn-cli": "^0.1.141"
   },
   "devDependencies": {
-    "husky": "^8.0.3"
+    "husky": "^8.0.3",
+    "textlint": "^13.3.3",
+    "textlint-rule-preset-ja-spacing": "^2.3.0",
+    "textlint-rule-preset-ja-technical-writing": "^8.0.0",
+    "textlint-rule-spellcheck-tech-word": "^5.0.0"
   }
 }
