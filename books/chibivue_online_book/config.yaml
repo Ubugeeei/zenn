@@ -30,3 +30,4 @@ chapters:
   - 320_bcs_component_proxy_setup_context
   - 330_bcs_component_slot
   - 340_bcs_options_api
+  - 400_btc_transform
