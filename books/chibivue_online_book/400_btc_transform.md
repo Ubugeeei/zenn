@@ -473,3 +473,6 @@ const app = createApp(App);
 
 app.mount("#app");
 ```
+
+ここまでのソースコード:  
+https://github.com/Ubugeeei/chibivue/tree/main/books/chapter_codes/400-btc-transformer
