@@ -1,5 +1,5 @@
 ---
-title: "Transformer の実装 (Basic Template Compiler 部門スタート)"
+title: "Transformer の実装 の Codegen のリファクタ(Basic Template Compiler 部門スタート)"
 ---
 
 # 既存実装のおさらい
@@ -421,24 +421,55 @@ export function buildProps(node: ElementNode): {
     directives: runtimeDirectives,
   };
 }
-
-export function buildDirectiveArgs(dir: DirectiveNode): ArrayExpression {
-  const dirArgs: ArrayExpression["elements"] = [];
-
-  if (dir.exp) dirArgs.push(dir.exp);
-  if (dir.arg) {
-    if (!dir.exp) {
-      dirArgs.push(`void 0`);
-    }
-    dirArgs.push(dir.arg);
-  }
-  return createArrayExpression(dirArgs, dir.loc);
-}
 ```
 
 # Transform した AST をもとに Codegen する
 
 AST を Codegen 用に Transform したわけですから、Codegen の方ももちろん対応する必要があります。
 Codegen に入ってくる AST としては主に VNodeClass (とそれらが持つ Node)を想定したコードを書けば OK です。
-最終的にどのような文字列として generate したいかは今までと変わりありません。  
-以上を踏まえて generate に手を加えてみましょう！
+最終的にどのような文字列として generate したいかは今までと変わりありません。
+
+既存の Codegen は非常に簡素な実装になっているので、ここでもう少し形式的にしておきましょう。(結構ハードコードになっているので)  
+Codegen の方でも Codegen 用の context を持つことにして、生成したコードをそこに push していくような構成にしてみようと思います。  
+ついでに、context の方に幾つかのヘルパー関数を実装してみます (インデント系とか)
+
+```ts
+export interface CodegenContext {
+  source: string;
+  code: string;
+  indentLevel: number;
+  line: 1;
+  column: 1;
+  offset: 0;
+  push(code: string, node?: CodegenNode): void;
+  indent(): void;
+  deindent(withoutNewLine?: boolean): void;
+  newline(): void;
+}
+```
+
+実装内容についてはここでは割愛しますが、それぞれの役割ごとに関数を分けただけで、実装方針の大きな変更はありません。
+ディレクティブについてはまだ対応できていないため、その辺りの仮実装を消した兼ね合いで動いていない部分もありますが、
+概ね以下のようなコードが動いていれば OK です！
+
+```ts
+import { createApp, defineComponent, ref } from "chibivue";
+
+const App = defineComponent({
+  setup() {
+    const count = ref(0);
+    return { count };
+  },
+
+  template: `
+    <div class="container">
+      <p> Hello World! </p>
+      <p> Count: {{ count }} </p>
+    </div>
+  `,
+});
+
+const app = createApp(App);
+
+app.mount("#app");
+```
