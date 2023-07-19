@@ -1,5 +1,5 @@
 ---
-title: "transformExpression と toDisplayString"
+title: "transformExpression"
 ---
 
 # 現状のマスタッシュ構文の課題
