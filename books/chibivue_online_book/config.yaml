@@ -32,3 +32,4 @@ chapters:
   - 340_bcs_options_api
   - 400_btc_transform
   - 405_btc_transform_expression
+  - 410_btc_v_on_bind
