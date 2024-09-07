@@ -711,7 +711,7 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L1027
 
-試しにこの ctx.bindings を出力しつつ以下のような SFC をコンパイルしてみると，
+試しにこの ctx.bindingMetadata を出力しつつ以下のような SFC をコンパイルしてみると，
 
 ```vue
 <script setup lang="ts">
@@ -738,7 +738,31 @@ const double = computed(() => renamedProps * 2)
 }
 ```
 
-それでは実際に ctx.bindings がどのように生成されているか見ていきましょう．
+それでは実際に ctx.bindingMetadata がどのように生成されているか見ていきましょう．
+大枠を見てみると，compileScript は 1.1 ~ 11 のステップで処理を行っています。
+
+※ 一部省略
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L280
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L302
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L380
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L684
+
+.
+.
+.
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L820
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L937
+
+この中から bindingMetadata に関わる部分を見ていきます．\
+さらにいうと，今回は defineProps や Props Destructure に関わる部分をのみを見ていきます．
+
+
 
 ## defineProps を読む
 
