@@ -717,10 +717,10 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 
 ```vue
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from "vue";
 
-const { count: renamedProps = 0 } = defineProps<{ count?: number }>()
-const double = computed(() => renamedProps * 2)
+const { count: renamedProps = 0 } = defineProps<{ count?: number }>();
+const double = computed(() => renamedProps * 2);
 </script>
 
 <template>
@@ -768,7 +768,7 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 この中から bindingMetadata に関わる部分を見ていきます．\
 さらにいうと，今回は defineProps や Props Destructure に関わる部分をのみを見ていきます．
 
-### 1.1 walk import declarations of `<script>` 
+### 1.1 walk import declarations of `<script>`
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L280
 
@@ -790,7 +790,6 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 この `ctx.userImports` は後ほど `bindingMetadata` に統合されます．
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L726-L736
-
 
 ### 1.2 walk import declarations of `<script setup>`
 
@@ -831,11 +830,65 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 この段階ではまだ `BindingTypes.PROS` としてはマークされていないようです．\
 (defineProps だった場合には `BindingTypes.SETUP_REACTIVE_CONST` になる)
 
-https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L1102C11-L1104
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L1102-L1104
 
-## defineProps を読む
+### 3 props destructure transform
+
+ここが今回の肝です．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L684-L687
+
+実行している関数名からも分かる通り，いよいよ Props Destructure の真髄と言ってもいいでしょう．
 
 ## propsDestructure を読む
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L97-L100
+
+さて，早速読んでいきましょう．
+この `transformDestructuredProps` という関数は [script/definePropsDestructure.ts](https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts) に実装されています．
+
+本記事でも，
+
+> スコープの制御もきちんとできているようで，
+
+と触れた通り，スコープの管理が必要です．\
+まずはスコープ情報を詰め込む場所です．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L91-L95
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L105-L107
+
+スコープのスタックを操作する関数も見当たります．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L118-L125
+
+前半部分には他にもローカル関数が用意されていますが，一旦読み飛ばして必要になったら随時読んでいきます．
+
+メインの処理はこれ以下になります．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L232
+
+ctx から `<script setup>` の AST を取得し，そのツリーを walk していきます．
+
+[estree-walker](https://github.com/Rich-Harris/estree-walker) というライブラリが提供している `walk` という関数を使いながら AST を walk して最終的な成果物を作るっていくのですが，
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L10
+
+まずはこの walk を始めるまえに `walkScope` という関数を一度実行して現在のスコープ (ルート) にあるバインディング情報を登録していきます．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L234-L235
+
+
+`node.body` (`Statement[]`) を見て回り，識別子を生成しうる箇所を探しながら登録していきます．\
+具体的には変数，関数，クラスの宣言です．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L139-L167
+
+これにより，currentScope として設定されているスコープに対してバインディング情報が登録されます．
+
+この `walkScope` 関数は，`walk` 関数の中で呼び出されています．
+
+## defineProps を読む
 
 # 言語ツールの支援について
 
