@@ -10,9 +10,9 @@ publication_name: comm_vue_nuxt
 ~~みなさんこんにちは, ubugeeei です．~~\
 ~~最近技術発信が全くできていないな〜お前それでも Vue Team Member かよ，と思いつつ，せっかく Vue 3.5 がリリースされたのでそれに関連した機能の記事でも書こうかと思います.~~
 
-# Vue 3.5 がリリースされました
+# Vue 3.5.0 がリリースされました
 
-先日，Vue 3.5 がリリースされました.
+先日，Vue 3.5.0 (Tengen Toppa Gurren Lagann) がリリースされました.
 
 https://blog.vuejs.org/posts/vue-3-5
 
@@ -472,7 +472,7 @@ const double = computed(() => __props.count * 2);
 <script setup lang="ts">
 import { computed } from "vue";
 
-const { count = 0 } = defineProps<{ count: number }>();
+const { count = 0 } = defineProps<{ count?: number }>();
 const double = computed(() => count * 2);
 </script>
 
@@ -495,7 +495,7 @@ import { computed } from "vue";
 const __sfc__ = /*#__PURE__*/ _defineComponent({
   __name: "App",
   props: {
-    count: { type: Number, required: true, default: 0 },
+    count: { type: Number, required: false, default: 0 },
   },
   setup(__props, { expose: __expose }) {
     __expose();
@@ -643,6 +643,22 @@ _toDisplayString($props.count) +
 ```
 
 # Props Destructure はどのように実装されているか
+
+さて，ここまでで Props Destructure についてユーザーが記述したコードがどのようなランタイムコードに変換されるかをみてきました．\
+それでは，これらが実際にどのような実装によって実現されているのか，[vuejs/core](https://github.com/vuejs/core/tree/v3.5.0) のソースコードを読みながら追っていきます．
+
+:::message
+これ以降登場するソースコードやリンクはすべて [v3.5.0](https://github.com/vuejs/core/tree/v3.5.0) の permalink になります．
+:::
+
+## 前程知識
+
+まずは [vuejs/core](https://github.com/vuejs/core/tree/v3.5.0) と言うリポジトリのおさらいですが，これが Vue.js (v3.0 以降) の実装で，packages 配下にいくつかのパッケージがあります．\
+今回見ていくのは `compiler-sfc` と言うパッケージです．ここに Single File Component のコンパイラが実装されています．
+
+https://github.com/vuejs/core/tree/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc
+
+
 
 # 言語ツールの支援について
 
