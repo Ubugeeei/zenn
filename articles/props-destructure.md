@@ -661,13 +661,17 @@ https://github.com/vuejs/core/tree/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 多くの場合はバンドラ等のツールのプラグインやローダー (別のライブラリ) に呼び出されて使われます。\
 (例えば、vite だと [vite-plugin-vue](https://github.com/vitejs/vite-plugin-vue))
 
-そして，この実装には，`compile` と言う一つの大きな関数があるわけではなく，Single File Component を全体をパースする `parse` と言う関数と，各ブロックをコンパイルするための，
-`compileTemplate`, `compileScript`, `compileStyle` と言う関数があります．
+そして，この実装には，`compile` と言う一つの大きな関数があるわけではなく，Single File Component を全体をパースする [`parse`](https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/parse.ts#L119) と言う関数と，各ブロックをコンパイルするための，
+[`compileScript`](https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L154), [`compileTemplate`](https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileTemplate.ts#L107), [`compileStyle`](https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileStyle.ts#L71) と言う関数があります．
 
-`parse` の結果は `SFCDescriptor` というSFC の情報を構造化したオブジェクトで，各ブロックのコンパイル関数はこの `SFCDescriptor` を引数に取ります．
+`parse` の結果は [`SFCDescriptor`](https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/parse.ts#L71) というSFC の情報を構造化したオブジェクトで，各ブロックのコンパイル関数はこの `SFCDescriptor` (もしくは SFCDescriptor から得た情報) を引数に取ります．
 
 ![compiler-sfc-main-functions](/images/props-destructure/compiler-sfc-main-functions.drawio.png)
+## メタ情報の解析
 
+## defineProps を読む
+
+## propsDestructure を読む
 
 
 # 言語ツールの支援について
