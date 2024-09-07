@@ -855,10 +855,89 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L47-L51
 
+初っ端ですが，`node` が `defineProps` の呼び出しでなければ `processWithDefaults` に飛ばします．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L52-L54
+
+processWithDefaults を見てみましょう．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L94-L98
+
+こちらも初っ端で `withDefault` の呼び出しであるかどうかを判定し，そうでなければ false を返して終了です．\
+何も処理は行われません．
+
+それ以外の場合では withDefault の呼び出しをハンドルし，第一引数として渡される想定がされている defineProps を processDefineProps にかけます．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L102
+
+それでは processDefineProps に戻ります．
+
+`defineProps` には 2 つの API があります．\
+第 1 引数に Runtime Props の定義を渡す形式と，ジェネリクスに型を記載する形式の 2 つです．
+
+まずは前者のオブジェクトを ctx に保存しておきます．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L60
+
+そしてそれらが存在する場合は key をとりだして bindingMetadata に `BindingTypes.PROPS` として登録します．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L64-L69
+
+続いて前者との重複チェックも行いつつ，後者の API の場合の定義 (型引数) も ctx に保存しておきます．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L72-L81
+
+続いて，`declId` がオブジェクトパターンの場合，Props Destructure として `processPropsDestructure` を呼び出します．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L84-L86
+
+`processPropsDestructure` は [script/definePropsDestructure.ts](https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts) に実装されています．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L26-L29
+
+`processPropsDestructure` を見てみましょう．\
+`processPropsDestructure` は，props の定義を解析する処理で，それ以外の部分で登場する props の参照書き換えの処理 (e.g. `count` を `__props.count` に書き換える) は行いません．
+
+`declId.properties` を読み進め，デフォルト値がある場合はそれを props の定義に追加していく処理がメインです．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L51-L52C24
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L62-L71
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L43
+
+参照書き換えの処理はまた後ほど読み進めます．今はここまででおしまいです．\
+`processDefineProps` に戻ります．
+
+戻ります，と言ってもこの後は特に何もしないので，`processDefineProps` はここでおしまいです．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L84-L92
+
+後は，ここで完成した `ctx.propsRuntimeDecl` または `ctx.propsTypeDecl` を元にコードを生成するだけです．\
+生成処理はここには書いていないので，また後で見ていきます．
+
+## 2.2 process `<script setup>` body の続き
+
+compileScript に戻ってきました．
+
+defineProps や defineEmits の処理が終わった後は，2-1 の時と同じように変数や関数，クラスの宣言を探して `walkDeclaration` していきます．\
+`walkDeclaration` は以前説明した通りです．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L591-L606
+
+また，`script setup` ではこれらに加え，以下のようないくつかの特別なハンドリングが必要です．\
+今回のメインテーマである Props Destructure には関係ないので，詳しくは説明しません．
+
+- top-level await の場合に非同期コンポーネントとしてマークする\
+  https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L628-L649
+- export 文があった場合にエラーにする\
+  https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L656-L667
+
+以上で 2 の処理はおしまいです．
 
 ## 3 props destructure transform
 
-ここが今回の肝です．
+続いて 3 です．ここが今回の肝です．
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L684-L687
 
