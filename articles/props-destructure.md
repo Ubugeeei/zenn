@@ -739,7 +739,7 @@ const double = computed(() => renamedProps * 2)
 ```
 
 それでは実際に ctx.bindingMetadata がどのように生成されているか見ていきましょう．
-大枠を見てみると，compileScript は 1.1 ~ 11 のステップで処理を行っています。
+大枠を見てみると，compileScript は 1.1 ~ 11 のステップで処理を行っています．
 
 ※ 一部省略
 
