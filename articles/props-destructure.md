@@ -828,6 +828,11 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L1073-L1082
 
+この段階ではまだ `BindingTypes.PROS` としてはマークされていないようです．\
+(defineProps だった場合には `BindingTypes.SETUP_REACTIVE_CONST` になる)
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L1102C11-L1104
+
 ## defineProps を読む
 
 ## propsDestructure を読む
