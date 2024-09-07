@@ -62,7 +62,7 @@ const double = computed(() => props.count * 2);
 
 ::::
 
-## Props Destructure の実装の経緯
+# Props Destructure の実装の経緯
 
 ## RFC について
 
