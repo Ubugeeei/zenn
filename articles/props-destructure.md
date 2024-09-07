@@ -658,6 +658,18 @@ _toDisplayString($props.count) +
 
 https://github.com/vuejs/core/tree/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc
 
+多くの場合はバンドラ等のツールのプラグインやローダー (別のライブラリ) に呼び出されて使われます。\
+(例えば、vite だと [vite-plugin-vue](https://github.com/vitejs/vite-plugin-vue))
+
+そして，この実装には，`compile` と言う一つの大きな関数があるわけではなく，Single File Component を全体をパースする `parse` と言う関数と，各ブロックをコンパイルするための，
+`compileTemplate`, `compileScript`, `compileStyle` と言う関数があります．
+
+`parse` の結果は `SFCDescriptor` というSFC の情報を構造化したオブジェクトで，各ブロックのコンパイル関数はこの `SFCDescriptor` を引数に取ります．
+
+![compiler-sfc-main-functions](/assets/props-destructure/compiler-sfc-main-functions.drawio.png)
+
+
+
 # 言語ツールの支援について
 
 # 総じて，どのように Props Destructure と向き合うのが良さそうか
