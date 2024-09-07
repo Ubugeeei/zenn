@@ -1062,8 +1062,6 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L721-L722
 
-コメントを見てみると，どうやらここで defineProps の解析結果の登録も行っているようです．
-
 まずは `scriptAst` (setup ではない通常の script の AST) に対して `analyzeScriptBindings` を実行します．
 `analyzeScriptBindings` は [script/analyzeScriptBindings.ts](https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/analyzeScriptBindings.ts) に実装されています．
 
