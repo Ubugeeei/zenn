@@ -693,6 +693,8 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 
 ## メタ情報の解析
 
+### 概要
+
 順序は行ったり来たりするのですが，まずはメタ情報の解析から見てみます．
 
 先ほどのコードの続きを見ていくと，bindings の情報を保持するオブジェクトが見当たります．
@@ -738,6 +740,10 @@ const double = computed(() => renamedProps * 2)
 }
 ```
 
+また，binding のタイプには以下のものが列挙されていることも前程知識として覚えておくと良いでしょう．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-core/src/options.ts#L109-L153
+
 それでは実際に ctx.bindingMetadata がどのように生成されているか見ていきましょう．
 大枠を見てみると，compileScript は 1.1 ~ 11 のステップで処理を行っています．
 
@@ -762,6 +768,26 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 この中から bindingMetadata に関わる部分を見ていきます．\
 さらにいうと，今回は defineProps や Props Destructure に関わる部分をのみを見ていきます．
 
+### 1.1 walk import declarations of `<script>` 
+
+script タグの import の解析です．\
+import 文ももちろん識別子のバインディングがあるので，解析して bindingMetadata に追加しています．\
+ここで気をつけたいのは，これらは `<script>` の処理であり，`<script setup>` は別の処理になっている点です．
+
+AST を操作し，import 文を探します．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L280-L300
+
+見つけたら `registerUserImport` という関数で情報を登録します．\
+この時点では `bindingMetadata` ではなく，`ctx.userImports` というオブジェクトに登録しています．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L229-L258
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L250-L258
+
+この `ctx.userImports` は後ほど `bindingMetadata` に統合されるます．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L726-L736
 
 
 ## defineProps を読む
