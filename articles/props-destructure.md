@@ -153,7 +153,7 @@ RFC にもあるように，モチベーションは主に 2 点です．
 
 # Props Destructure はどのように動作するか
 
-RFC に書いてあるものは一部なので，もう少し細かく実際の動作を除いてみましょう．\
+RFC に書いてあるものは一部なので，もう少し細かく実際の動作を覗いてみましょう．\
 実装方法については後で詳しく触れますが，まず前提として Props Destructure は **コンパイラの実装** です.\
 コンパイラがなんなのか，という話については [同 publication のこちらの記事](https://zenn.dev/comm_vue_nuxt/articles/what-is-vue-compiler) を是非参照してください．
 
@@ -627,7 +627,7 @@ export default __sfc__;
 } */
 ```
 
-となっていおり，エイリアスの情報が追加されています．
+となっており，エイリアスの情報が追加されています．
 
 `__propsAliases` にエイリアスと元の変数名の対応が記載されており，`renamedPropsCount` も `props-alised` という解析結果になっています．\
 この情報を元にコンパイラは，`renamedPropsCount` を `__props.count` としてコンパイルしています．
@@ -648,7 +648,7 @@ _toDisplayString($props.count) +
 それでは，これらが実際にどのような実装によって実現されているのか，[vuejs/core](https://github.com/vuejs/core/tree/v3.5.0) のソースコードを読みながら追っていきます．
 
 :::message
-これ以降登場するソースコードやリンクはすべて [v3.5.0](https://github.com/vuejs/core/tree/v3.5.0) の permalink になります．
+これ以降登場するソースコードやリンクはすべて [v3.5.0](https://github.com/vuejs/core/tree/v3.5.0) 時点のものになります．
 :::
 
 ## 前程知識
@@ -657,8 +657,6 @@ _toDisplayString($props.count) +
 今回見ていくのは `compiler-sfc` と言うパッケージです．ここに Single File Component のコンパイラが実装されています．
 
 https://github.com/vuejs/core/tree/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc
-
-
 
 # 言語ツールの支援について
 
