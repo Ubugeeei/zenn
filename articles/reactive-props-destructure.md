@@ -666,7 +666,7 @@ https://github.com/vuejs/core/tree/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 
 `parse` の結果は [`SFCDescriptor`](https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/parse.ts#L71) という SFC の情報を構造化したオブジェクトで，各ブロックのコンパイル関数はこの `SFCDescriptor` (もしくは SFCDescriptor から得た情報) を引数に取ります．
 
-![compiler-sfc-main-functions](/images/props-destructure/compiler-sfc-main-functions.drawio.png)
+![compiler-sfc-main-functions](/images/reactive-props-destructure/compiler-sfc-main-functions.drawio.png)
 
 ## script の解析やコンパイル
 
