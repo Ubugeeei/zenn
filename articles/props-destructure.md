@@ -555,7 +555,7 @@ const double = computed(() => renamedPropsCount * 2);
 </template>
 ```
 
-### Output
+#### Output
 
 ```ts
 /* Analyzed bindings: {
@@ -693,8 +693,6 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 
 ## メタ情報の解析
 
-### 概要
-
 順序は行ったり来たりするのですが，まずはメタ情報の解析から見てみます．
 
 先ほどのコードの続きを見ていくと，bindings の情報を保持するオブジェクトが見当たります．
@@ -768,7 +766,7 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 この中から bindingMetadata に関わる部分を見ていきます．\
 さらにいうと，今回は defineProps や Props Destructure に関わる部分をのみを見ていきます．
 
-### 1.1 walk import declarations of `<script>`
+## 1.1 walk import declarations of `<script>`
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L280
 
@@ -791,7 +789,7 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L726-L736
 
-### 1.2 walk import declarations of `<script setup>`
+## 1.2 walk import declarations of `<script setup>`
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L302
 
@@ -801,7 +799,7 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L306
 
-### 2.1 process normal `<script>` body
+## 2.1 process normal `<script>` body
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L380
 
@@ -858,7 +856,7 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L47-L51
 
 
-### 3 props destructure transform
+## 3 props destructure transform
 
 ここが今回の肝です．
 
@@ -923,7 +921,7 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 
 それでは，メインの enter hook の方です．
 
-#### function scopes
+### function scopes
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L254-L261
 
@@ -931,7 +929,7 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 
 `pushScope` しつつ，引数も walk して binding を登録しておきます．
 
-#### catch param
+### catch param
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L263-L271
 
@@ -945,7 +943,7 @@ try {
 
 の `e` の部分です．これも忘れず登録しておきます．
 
-#### non-function block scopes
+### non-function block scopes
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L274-L278
 
@@ -954,7 +952,7 @@ function 以外のものが相当するようなので，if や for, while, try 
 
 こちらは body の statement を見て周り，変数宣言や関数宣言などを見つけて binding を登録していきます．
 
-#### identifier
+### identifier
 
 ここまででバインディングの登録は終わっていて，最後に Identifier に入った時にバインディング情報をもとに id を書き換えます．\
 `count` などが `__props.count` に変換されるのはまさにこの時です．
