@@ -9,6 +9,7 @@
     "keyof",
     "unref",
     "unwatch",
-    "vnode"
+    "vnode",
+    "vuejs"
   ]
 }
