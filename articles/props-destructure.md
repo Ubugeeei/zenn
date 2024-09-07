@@ -808,6 +808,10 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 
 こちらはかなり長いですが，注目するべきところは後半に呼び出されている `walkDeclaration` です．
 
+### walkDeclaration
+
+少し前後しますが，walkDeclaration についてみてみましょう．(実際には 2.1 に関連しない部分もありますが，これから何度も出てくるので)
+
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L461-L484
 
 変数や関数，クラスの宣言があった場合にはそれらを元に bindingMetadata に情報を追加しています．
