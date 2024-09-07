@@ -1046,18 +1046,16 @@ rewriteId では，単純な識別子の書き換え (e.g. `x --> __props.x`) �
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L188-L217
 
-以上で Props Destructure の **識別子の書き換え** に関する処理は終わりです．
+以上で Props Destructure の **識別子の書き換え** に関する処理は終わりです．\
+ここまでである程度 Props Destructure に関する処理を理解できたのではないでしょうか．
 
-・
-・
-・
-
-そうです，察された方もいるかもしれませんが，デフォルト値の処理はここで行われていませんでした．
+後は，これまでに得た情報をもとにコードを生成するだけです．\
+後少し，その前に bindingMetadata の登録周りでやることがあるので続いてはそちらをみて行きましょう．
 
 ## 6. analyze binding metadata
 
 もう何をやったか覚えてない方もいるかもしれませんが，ようやく戻ってきました．\
-これまで，compileScript の 1.1, 1.2, 2, 3 と進んで，3 については Props Destructure の処理を見ました．\
+これまで，compileScript の 1-1, 1-2, 2-1, 2-2, 3 と進んで，3 については Props Destructure の処理を見ました．\
 続きです．
 
 4, 5 は一旦読み飛ばして，6 の binding metadata の解析に進みます．
@@ -1065,6 +1063,138 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L721-L722
 
 コメントを見てみると，どうやらここで defineProps の解析結果の登録も行っているようです．
+
+まずは `scriptAst` (setup ではない通常の script の AST) に対して `analyzeScriptBindings` を実行します．
+`analyzeScriptBindings` は [script/analyzeScriptBindings.ts](https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/analyzeScriptBindings.ts) に実装されています．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/analyzeScriptBindings.ts#L15
+
+ここで何が行われているかというと，`export default` を探して Options API からのバインディングを解析しています．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/analyzeScriptBindings.ts#L17-L23
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/analyzeScriptBindings.ts#L27
+
+例えば，`props` オプションなどです．
+
+`export default` されたオブジェクトに `props` という key が存在している場合は `BindingTypes.PROPS` として登録します．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/analyzeScriptBindings.ts#L42-L48
+
+他にも，`inject` であったり，`computed`, `method`, `setup`, `data` などを解析して bindingMetadata に登録しています．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/analyzeScriptBindings.ts#L50-L98
+
+さて，`analyzeScriptBindings` を抜けて 6 の処理の続きを見てみましょう．\
+続きは簡単で，これまでに収集した `ctx.userImports` や `scriptBindings`, `setupBindings` 等を `ctx.bindingMetadata` に統合しています．
+
+ここまでで bindingMetadata は完成です！お疲れ様でした！\
+残りはコード生成を見ていきましょう！
+
+## 8. finalize setup() argument signature
+
+生成する setup 関数のコードのシグネチャを決めています．\
+第 1 引数として受け取る props が `__props` になるのもここの仕業です．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L770
+
+## 10. finalize default export
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L937
+
+ここで最終的に出力するコードを組み立てています．
+
+特に今回注目したいのは以下の部分です．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L953-L954
+
+ここで，props の定義コードを生成し， `runtimeOptions` (コンポーネントのオプションとして出力されるコードが格納される変数) に追加しています．
+
+`genRuntimeProps` をみてみましょう．\
+この関数は [script/defineProps.ts](https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts) に定義されています．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L132
+
+ランタイムオブジェクトとして渡されている場合はそれをそのまま文字列にして結果とします．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L135-L136
+
+Destructure されている場合はそれに加え，デフォルト値を取り出し，`mergeDefaults` という関数で実行時 (ランタイム) マージするようなコードを出力します．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L137-L154
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/runtime-core/src/apiSetupHelpers.ts#L419-L422
+
+続いては型引数で props が定義された場合です．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L155-L157
+
+`extractRuntimeProps` という関数で型情報を元にランタイムオブジェクト (を表す文字列) を生成します．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L170-L172
+
+resolveRuntimePropsFromType という関数で props の定義データに変換していることがわかります．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L174
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L202-L205
+
+やっていることは意外にも単純で，最終的には key 名，type, required の情報を持ったオブジェクトを生成しています．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L221-L226
+
+required に関しては，本記事でも，
+
+> optional parameter の記述を見て required を決定するため
+
+のように触れた通り，型情報から required を決定しています．
+
+これらの定義データをどのように作っているのか軽くみていきましょう．
+
+まずは resolveTypeElements という関数で型情報を解決しています．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L207
+
+Vue.js は 3.3.0 から defineProps などのマクロで import された type 定義を使えるようになりました．
+
+https://blog.vuejs.org/posts/vue-3-3#imported-and-complex-types-support-in-macros
+
+ついては，単純に型引数に渡された型のリテラルを解析するだけではなく，外部ファイルから import された型定義等も解決しなくてはなりません．\
+その辺りをゴタゴタやっているのがこの辺りの処理です．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/resolveType.ts#L153-L158
+
+解決には tsconfig で設定された alias 等も必要なため，typescript をロードして，ts の api を使用して tsconfig を読み取ったりしています．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/resolveType.ts#L820-L821
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/resolveType.ts#L826-L846
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/vue/compiler-sfc/register-ts.js
+
+そうして解決された型情報を元に Props の定義に指定される type を推論します．
+
+その関数が `inferRuntimeType` です．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L210C16-L210C32
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/resolveType.ts#L1464-L1469
+
+こちらもまた複雑ですが，型 node の type を元に推論します．\
+これらの推論方法については詳しくは触れませんが，地道に分岐を書いて，要所要所で `resolveTypeReference` したり，再帰的に `inferRuntimeType` したりして頑張ります．
+
+さて，これらの処理によって型他引数に与えられた型情報からランタイムの Props 定義オブジェクトの生成に必要な情報を得ることができるようになりました．
+残りは生成です．
+
+ここまで戻ってきました．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L174
+
+後は props の定義を一つ一つループで回して `genRuntimePropFromType` という関数でコードを生成するだけす．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L182-L188
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L231-L235
 
 # 言語ツールの支援について
 
