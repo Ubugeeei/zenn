@@ -1,5 +1,5 @@
 ---
-title: "Props Destructure を支える技術"
+title: "Reactive Props Destructure を支える技術"
 emoji: "💪"
 type: "tech"
 topics: ["vue", "フロントエンド", "typescript"]
@@ -21,14 +21,14 @@ https://blog.vuejs.org/posts/vue-3-5
 
 # 今回のトピック
 
-Vue 3.5 で **Props Destructure** という機能が安定版となりました．\
-今回はこの Props Destructure について，機能のおさらいや経緯，実装，そしてそれらを支援する技術について解説します．
+Vue 3.5 で **Reactive Props Destructure** という機能が安定版となりました．\
+今回はこの Reactive Props Destructure について，機能のおさらいや経緯，実装，そしてそれらを支援する技術について解説します．
 
 https://blog.vuejs.org/posts/vue-3-5#reactive-props-destructure
 
-## Props Destructure ってなんだっけ？ (おさらい)
+## Reactive Props Destructure ってなんだっけ？ (おさらい)
 
-Props Destructure は defineProps で定義された props を Destructure (分割代入) した際にリアクティビティを維持する機能です．\
+Reactive Props Destructure は defineProps で定義された props を Destructure (分割代入) した際にリアクティビティを維持する機能です．\
 これにより，いくつかの DX 改善を期待することができます．
 
 特に，デフォルト値の設定に関して `withDefault` を使用せずに簡潔に書けるようになることは大きな進歩です.
@@ -62,11 +62,11 @@ const double = computed(() => props.count * 2);
 
 ::::
 
-# Props Destructure の実装の経緯
+# Reactive Props Destructure の実装の経緯
 
 ## RFC について
 
-Props Destructure は RFC として始まりました．
+Reactive Props Destructure は RFC として始まりました．
 
 https://github.com/vuejs/rfcs/discussions/502
 
@@ -100,9 +100,9 @@ https://github.com/vuejs/rfcs/discussions/369#discussioncomment-5059028
 
 この Reactivity Transform は [Vue Macros というライブラリで引き続き利用可能](https://vue-macros.dev/features/reactivity-transform.html) になっていますが，vuejs/core からは 3.3 非推奨化，3.4 では完全に削除されました．
 
-## Props Destructure としての RFC
+## Reactive Props Destructure としての RFC
 
-そんなこんなでも元々は Reactivity Transform の一部として提案されていた Props Destructure ですが，後に独立した RFC として 2023/4 に提案されることになりました．
+そんなこんなでも元々は Reactivity Transform の一部として提案されていた Reactive Props Destructure ですが，後に独立した RFC として 2023/4 に提案されることになりました．
 
 https://github.com/vuejs/rfcs/discussions/502
 
@@ -151,10 +151,10 @@ RFC にもあるように，モチベーションは主に 2 点です．
 と言った感じで詳しくは RFC を参照して欲しいですが，大きく上記のような欠点が挙げられており，**この欠点に対する向き合い方** も同時に記載されています．\
 向き合い方に関してはざっくり「**別に，今までもそうだったけどたいして問題か？**」と言った感じです．
 
-# Props Destructure はどのように動作するか
+# Reactive Props Destructure はどのように動作するか
 
 RFC に書いてあるものは一部なので，もう少し細かく実際の動作を覗いてみましょう．\
-実装方法については後で詳しく触れますが，まず前提として Props Destructure は **コンパイラの実装** です.\
+実装方法については後で詳しく触れますが，まず前提として Reactive Props Destructure は **コンパイラの実装** です.\
 コンパイラがなんなのか，という話については [同 publication のこちらの記事](https://zenn.dev/comm_vue_nuxt/articles/what-is-vue-compiler) を是非参照してください．
 
 ついては「動作を見る」と言いまいしたが，正確には「どのようにコンパイルされるか見る」ということになります．
@@ -168,7 +168,7 @@ RFC に書いてあるものは一部なので，もう少し細かく実際の�
 - コンパイラのバージョンは Vue 3.5.0 です．
   :::
 
-### 基本動作 (Props Destructure 以前)
+### 基本動作 (Reactive Props Destructure 以前)
 
 まずは，Props Destructure を利用しない場合の基本的な動作です．\
 せっかくなので，定義した props を template 内で利用することも一緒に見てみます．
@@ -345,9 +345,9 @@ function render(_ctx, _cache, $props, $setup, $data, $options) {
 
 template 内に登場する識別子のバインディング情報が `setup-xxx` の場合には `$setup` から，props の場合には `$props` から参照されているようにコンパイルします．
 
-### Props Destructure の基本動作
+### Reactive Props Destructure の基本動作
 
-さて，ここから今回の本題である Props Destructure の動作についてみていきます．\
+さて，ここから今回の本題である Reactive Props Destructure の動作についてみていきます．\
 まずはシンプルな例から見ていきましょう．
 
 #### Input
@@ -537,7 +537,7 @@ export default __sfc__;
 
 ### props のエイリアス
 
-Props Destructure では通常の JavaScript の分割代入のように，変数名にエイリアスを与えることができます．
+Reactive Props Destructure では通常の JavaScript の分割代入のように，変数名にエイリアスを与えることができます．
 こちらも，どのようなコンパイル結果になるか除いてみましょう．
 
 #### Input
@@ -642,9 +642,9 @@ _toDisplayString($props.count) +
   _toDisplayString($setup.double);
 ```
 
-# Props Destructure はどのように実装されているか
+# Reactive Props Destructure はどのように実装されているか
 
-さて，ここまでで Props Destructure についてユーザーが記述したコードがどのようなランタイムコードに変換されるかをみてきました．\
+さて，ここまでで Reactive Props Destructure についてユーザーが記述したコードがどのようなランタイムコードに変換されるかをみてきました．\
 それでは，これらが実際にどのような実装によって実現されているのか，[vuejs/core](https://github.com/vuejs/core/tree/v3.5.0) のソースコードを読みながら追っていきます．
 
 :::message
@@ -764,7 +764,7 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L937
 
 この中から bindingMetadata に関わる部分を見ていきます．\
-さらにいうと，今回は defineProps や Props Destructure に関わる部分をのみを見ていきます．
+さらにいうと，今回は defineProps や Reactive Props Destructure に関わる部分をのみを見ていきます．
 
 ## 1.1 walk import declarations of `<script>`
 
@@ -926,7 +926,7 @@ defineProps や defineEmits の処理が終わった後は，2-1 の時と同じ
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L591-L606
 
 また，`script setup` ではこれらに加え，以下のようないくつかの特別なハンドリングが必要です．\
-今回のメインテーマである Props Destructure には関係ないので，詳しくは説明しません．
+今回のメインテーマである Reactive Props Destructure には関係ないので，詳しくは説明しません．
 
 - top-level await の場合に非同期コンポーネントとしてマークする\
   https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L628-L649
@@ -941,7 +941,7 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L684-L687
 
-実行している関数名からも分かる通り，いよいよ Props Destructure の真髄と言ってもいいでしょう．
+実行している関数名からも分かる通り，いよいよ Reactive Props Destructure の真髄と言ってもいいでしょう．
 
 ## propsDestructure を読む
 
@@ -1046,8 +1046,8 @@ rewriteId では，単純な識別子の書き換え (e.g. `x --> __props.x`) �
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L188-L217
 
-以上で Props Destructure の **識別子の書き換え** に関する処理は終わりです．\
-ここまでである程度 Props Destructure に関する処理を理解できたのではないでしょうか．
+以上で Reactive Props Destructure の **識別子の書き換え** に関する処理は終わりです．\
+ここまでである程度 Reactive Props Destructure に関する処理を理解できたのではないでしょうか．
 
 後は，これまでに得た情報をもとにコードを生成するだけです．\
 後少し，その前に bindingMetadata の登録周りでやることがあるので続いてはそちらをみて行きましょう．
@@ -1055,7 +1055,7 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 ## 6. analyze binding metadata
 
 もう何をやったか覚えてない方もいるかもしれませんが，ようやく戻ってきました．\
-これまで，compileScript の 1-1, 1-2, 2-1, 2-2, 3 と進んで，3 については Props Destructure の処理を見ました．\
+これまで，compileScript の 1-1, 1-2, 2-1, 2-2, 3 と進んで，3 については Reactive Props Destructure の処理を見ました．\
 続きです．
 
 4, 5 は一旦読み飛ばして，6 の binding metadata の解析に進みます．
@@ -1196,11 +1196,11 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 
 ## Template での識別子の扱い
 
-かなり長かったですが，ここまでで Props Destructure と defineProps の実装を追うことができました．\
+かなり長かったですが，ここまでで Reactive Props Destructure と defineProps の実装を追うことができました．\
 同時に， bindingMetadata にバインディングの情報が登録できているので，compileTemplate の方ではその情報を参照することで，\
 template で識別子を扱う際に正しい参照元のコードを出力することができます．
 
-今回は Props Destructure について理解することが目的なので，template のコンパイラについては詳しくは触れませんが，\
+今回は Reactive Props Destructure について理解することが目的なので，template のコンパイラについては詳しくは触れませんが，\
 一応該当の部分はこの辺りのコードになります．
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-core/src/transforms/transformExpression.ts#L119-L123
@@ -1223,7 +1223,7 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 お疲れ様でした．
 
 しかし今回のタイトルは「Props Destructure の実装方法！」ではありません．\
-「*Props Destructure を支える技術*」です．
+「*Reactive Props Destructure を支える技術*」です．
 
 コンパイラはもちろんその一つですが，もう一つ大事なものがあります．
 
@@ -1239,7 +1239,7 @@ RFC に中でも，Props Destructure の欠点として以下のようなもの�
 - コンパイラマジックによる初学者の混乱
 
 これらに関しては，「まぁ以前からそうだし，特に大きな問題にはならない」という総評ではありましたが，\
-そもそもこの Props Destructure は DX を改善する目的で作られたものです．
+そもそもこの Reactive Props Destructure は DX を改善する目的で作られたものです．
 
 以前からそうだったとはいえ，改善できる部分があるなら改善したほうが良いです．\
 そこで，Vue Team は言語ツールによる支援によってこれらを解決する道を選びました．
@@ -1271,13 +1271,13 @@ https://github.com/vuejs/language-tools/blob/510063740b90b64caedaee1f0bde7097461
 
 https://github.com/vuejs/language-tools/blob/510063740b90b64caedaee1f0bde70974613a92c/packages/language-service/lib/plugins/vue-inlayhints.ts#L247-L257
 
-# 総じて，どのように Props Destructure と向き合うのが良さそうか
+# 総じて，どのように Reactive Props Destructure と向き合うのが良さそうか
 
-かなり長い記事になってしまいましたが，今回は Vue 3.5.0 で安定版となった Props Destructure について，経緯や実装方法，言語ツールによる支援について見てきました．
+かなり長い記事になってしまいましたが，今回は Vue 3.5.0 で安定版となった Reactive Props Destructure について，経緯や実装方法，言語ツールによる支援について見てきました．
 
-この Props Destructure は RFC での議論を見ても分かる通り，賛否両論で，特に欠点について気にしている人も少なくないようでした．\
+この Reactive Props Destructure は RFC での議論を見ても分かる通り，賛否両論で，特に欠点について気にしている人も少なくないようでした．\
 実は，Vue.js Team にはチームメンバーのみが閲覧/書き込みできる internal な discussion board があり，そこではチームメンバーのみでの議論が行われることがあります．\
-Props Destructure はそこでも多くの議論が重ねられていました．
+Reactive Props Destructure はそこでも多くの議論が重ねられていました．
 
 個人的には総じて，Props Destructure はとても良いものだと感じています．
 そして，それを「良い」と評価するにはいくつかのポイントがあると思っているので以下にそれをまとめてこの記事の締めとしたいと思います．
