@@ -1176,7 +1176,7 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 
 その関数が `inferRuntimeType` です．
 
-https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L210C16-L210C32
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L210-L210
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/resolveType.ts#L1464-L1469
 
