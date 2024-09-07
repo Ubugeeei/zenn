@@ -658,21 +658,91 @@ _toDisplayString($props.count) +
 
 https://github.com/vuejs/core/tree/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc
 
-多くの場合はバンドラ等のツールのプラグインやローダー (別のライブラリ) に呼び出されて使われます。\
-(例えば、vite だと [vite-plugin-vue](https://github.com/vitejs/vite-plugin-vue))
+多くの場合はバンドラ等のツールのプラグインやローダー (別のライブラリ) に呼び出されて使われます．\
+(例えば，vite だと [vite-plugin-vue](https://github.com/vitejs/vite-plugin-vue))
 
 そして，この実装には，`compile` と言う一つの大きな関数があるわけではなく，Single File Component を全体をパースする [`parse`](https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/parse.ts#L119) と言う関数と，各ブロックをコンパイルするための，
 [`compileScript`](https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L154), [`compileTemplate`](https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileTemplate.ts#L107), [`compileStyle`](https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileStyle.ts#L71) と言う関数があります．
 
-`parse` の結果は [`SFCDescriptor`](https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/parse.ts#L71) というSFC の情報を構造化したオブジェクトで，各ブロックのコンパイル関数はこの `SFCDescriptor` (もしくは SFCDescriptor から得た情報) を引数に取ります．
+`parse` の結果は [`SFCDescriptor`](https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/parse.ts#L71) という SFC の情報を構造化したオブジェクトで，各ブロックのコンパイル関数はこの `SFCDescriptor` (もしくは SFCDescriptor から得た情報) を引数に取ります．
 
 ![compiler-sfc-main-functions](/images/props-destructure/compiler-sfc-main-functions.drawio.png)
+
+## script の解析やコンパイル
+
+今回は script に関するコンパイラをメインで読んでいくことになるので，[`compileScript`](https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L154) 周辺を読んでいきます．\
+注目したいファイル/ディレクトリは [`packages/compiler-sfc/src/compileScript.ts`](https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts) と [`packages/compiler-sfc/src/script`](https://github.com/vuejs/core/tree/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script) です．
+
+`script/` の配下にそれぞれの処理が分割されていて，compileScript の方でそれらが呼び出されています．
+今回は主に，以下の 3 つの処理を追ってみます．
+
+- [script/analyzeScriptBindings.ts](https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/analyzeScriptBindings.ts)
+- [script/defineProps.ts](https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts)
+- [script/definePropsDestructure.ts](https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts)
+
+まずは呼び出し元である `compileScript.ts` から見ていきます．
+
+compileScript という大きな関数があります．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L154-L157
+
+この関数は SFCDescriptor を受け取り，コードをコンパイルします．\
+Descriptor から `<script>` と `<script setup>` の情報を取り出し，それぞれの処理を行います．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L167
+
 ## メタ情報の解析
+
+順序は行ったり来たりするのですが，まずはメタ情報の解析から見てみます．
+
+先ほどのコードの続きを見ていくと，bindings の情報を保持するオブジェクトが見当たります．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L195-L198
+
+そして，いくつかの binding 情報を最終的には `ctx.bindingMetadata` に格納しています．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L737-L748
+
+この `ctx.bindingMetadata` には後ほど読む `analyzeScriptBindings` の結果も格納されているようで，全体として binding のメタ情報は全てこのオブジェクトに集約されていることが予測できます．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L724
+
+この関数の結果としても使われているため，間違いないでしょう．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L1027
+
+試しにこの ctx.bindings を出力しつつ以下のような SFC をコンパイルしてみると，
+
+```vue
+<script setup lang="ts">
+import { computed } from 'vue'
+
+const { count: renamedProps = 0 } = defineProps<{ count?: number }>()
+const double = computed(() => renamedProps * 2)
+</script>
+
+<template>
+  <div>{{ renamedProps }}{{ count }}{{ double }}</div>
+</template>
+```
+
+以下のような出力を得ることが出来ました．
+
+```ts
+{
+  renamedProps: 'props-aliased',
+  __propsAliases: { renamedProps: 'count' },
+  computed: 'setup-const',
+  double: 'setup-ref',
+  count: 'props'
+}
+```
+
+それでは実際に ctx.bindings がどのように生成されているか見ていきましょう．
 
 ## defineProps を読む
 
 ## propsDestructure を読む
-
 
 # 言語ツールの支援について
 
