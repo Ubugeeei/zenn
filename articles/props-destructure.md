@@ -394,11 +394,13 @@ const __sfc__ = /*#__PURE__*/ _defineComponent({
     return __returned__;
   },
 });
+
 import {
   toDisplayString as _toDisplayString,
   openBlock as _openBlock,
   createElementBlock as _createElementBlock,
 } from "vue";
+
 function render(_ctx, _cache, $props, $setup, $data, $options) {
   return (
     _openBlock(),
@@ -415,7 +417,7 @@ __sfc__.__file = "src/App.vue";
 export default __sfc__;
 ```
 
-Destructuring してしまっているので，前回のテンプレートから `{{ props.count}}` は削除してしまいました (props と言う名前の変数は存在しないため)．
+Destructuring してしまっているので，前回のテンプレートから `{{ props.count }}` は削除してしまいました (props と言う名前の変数は存在しないため)．
 
 まず注目したいのはコンパイル結果の
 
@@ -508,11 +510,13 @@ const __sfc__ = /*#__PURE__*/ _defineComponent({
     return __returned__;
   },
 });
+
 import {
   toDisplayString as _toDisplayString,
   openBlock as _openBlock,
   createElementBlock as _createElementBlock,
 } from "vue";
+
 function render(_ctx, _cache, $props, $setup, $data, $options) {
   return (
     _openBlock(),
@@ -530,6 +534,113 @@ export default __sfc__;
 ```
 
 `count: { type: Number, required: true, default: 0 },` を観測することができました．
+
+### props のエイリアス
+
+Props Destructure では通常の JavaScript の分割代入のように，変数名にエイリアスを与えることができます．
+こちらも，どのようなコンパイル結果になるか除いてみましょう．
+
+#### Input
+
+```vue
+<script setup lang="ts">
+import { computed } from "vue";
+
+const { count: renamedPropsCount } = defineProps<{ count: number }>();
+const double = computed(() => renamedPropsCount * 2);
+</script>
+
+<template>
+  <div>{{ count }}{{ renamedPropsCount }}{{ double }}</div>
+</template>
+```
+
+### Output
+
+```ts
+/* Analyzed bindings: {
+  "renamedPropsCount": "props-aliased",
+  "__propsAliases": {
+    "renamedPropsCount": "count"
+  },
+  "computed": "setup-const",
+  "double": "setup-ref",
+  "count": "props"
+} */
+import { defineComponent as _defineComponent } from "vue";
+import { computed } from "vue";
+
+const __sfc__ = /*#__PURE__*/ _defineComponent({
+  __name: "App",
+  props: {
+    count: { type: Number, required: true },
+  },
+  setup(__props, { expose: __expose }) {
+    __expose();
+
+    const double = computed(() => __props.count * 2);
+
+    const __returned__ = { double };
+    Object.defineProperty(__returned__, "__isScriptSetup", {
+      enumerable: false,
+      value: true,
+    });
+    return __returned__;
+  },
+});
+
+import {
+  toDisplayString as _toDisplayString,
+  openBlock as _openBlock,
+  createElementBlock as _createElementBlock,
+} from "vue";
+
+function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return (
+    _openBlock(),
+    _createElementBlock(
+      "div",
+      null,
+      _toDisplayString($props.count) +
+        _toDisplayString($props["count"]) +
+        _toDisplayString($setup.double),
+      1 /* TEXT */
+    )
+  );
+}
+__sfc__.render = render;
+__sfc__.__file = "src/App.vue";
+export default __sfc__;
+```
+
+まず，注目したいところは上部の解析結果です．
+
+```ts
+/* Analyzed bindings: {
+  "renamedPropsCount": "props-aliased",
+  "__propsAliases": {
+    "renamedPropsCount": "count"
+  },
+  "computed": "setup-const",
+  "double": "setup-ref",
+  "count": "props"
+} */
+```
+
+となっていおり，エイリアスの情報が追加されています．
+
+`__propsAliases` にエイリアスと元の変数名の対応が記載されており，`renamedPropsCount` も `props-alised` という解析結果になっています．\
+この情報を元にコンパイラは，`renamedPropsCount` を `__props.count` としてコンパイルしています．
+
+```ts
+const double = computed(() => __props.count * 2);
+```
+
+```ts
+_toDisplayString($props.count) +
+  _toDisplayString($props["count"]) +
+  _toDisplayString($setup.double);
+```
 
 # Props Destructure はどのように実装されているか
 
