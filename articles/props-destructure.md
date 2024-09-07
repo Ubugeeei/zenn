@@ -1234,4 +1234,72 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 
 # 言語ツールの支援について
 
+RFC に中でも，Props Destructure の欠点として以下のようなものが挙げられていました．
+
+- destructuring された props を誤って関数に渡してしまい，リアクティビティが失われる可能性がある
+- props であることが明示的でない (他の変数と区別がつかなくなる)
+- コンパイラマジックによる初学者の混乱
+
+これらに関しては，「まぁ以前からそうだし，特に大きな問題にはならない」という総評ではありましたが，\
+そもそもこの Props Destructure は DX を改善する目的で作られたものです．
+
+以前からそうだったとはいえ，改善できる部分があるなら改善したほうが良いです．\
+そこで，Vue Team は言語ツールによる支援によってこれらを解決する道を選びました．
+
+具体的には，props であることがわかりやすいように inlay hints を実装します．\
+こちらはリリースブログでも言及があります．
+
+https://blog.vuejs.org/posts/vue-3-5#reactive-props-destructure
+
+> For those who prefer to better distinguish destructured props from normal variables, @vue/language-tools 2.1 has shipped an opt-in setting to enable inlay hints for them:
+> ![](https://blog.vuejs.org/assets/props-destructure-inlay-hint.s6REBWmB.png)
+
+これにより，デフォルト値やエイリアスなどの簡潔な props 定義の恩恵を受けつつ，props の明示性を保つ試みです．
+
+こちらは vuejs/language-tools に plugin として実装されています．
+
+https://github.com/vuejs/language-tools/blob/510063740b90b64caedaee1f0bde70974613a92c/packages/language-service/lib/plugins/vue-inlayhints.ts
+
+https://github.com/vuejs/language-tools/blob/510063740b90b64caedaee1f0bde70974613a92c/packages/language-service/lib/plugins/vue-inlayhints.ts#L35-L46
+
+ここで，destructuring された props を探索するための `findDestructuredProps` という関数を覗いてみると，先ほど compiler-sfc で見た `transformDestructuredProps` のような実装を観測することができます．
+
+https://github.com/vuejs/language-tools/blob/510063740b90b64caedaee1f0bde70974613a92c/packages/language-service/lib/plugins/vue-inlayhints.ts#L91-L104
+
+
+`transformDestructuredProps` と同じように，スコープとバインディングを解析し，識別子を検索しているようです．
+
+https://github.com/vuejs/language-tools/blob/510063740b90b64caedaee1f0bde70974613a92c/packages/language-service/lib/plugins/vue-inlayhints.ts#L131-L136
+
+https://github.com/vuejs/language-tools/blob/510063740b90b64caedaee1f0bde70974613a92c/packages/language-service/lib/plugins/vue-inlayhints.ts#L247-L257
+
 # 総じて，どのように Props Destructure と向き合うのが良さそうか
+
+かなり長い記事になってしまいましたが，今回は Vue 3.5.0 で安定版となった Props Destructure について，経緯や実装方法，言語ツールによる支援について見てきました．
+
+この Props Destructure は RFC での議論を見ても分かる通り，賛否両論で，特に欠点について気にしている人も少なくないようでした．\
+実は，Vue.js Team にはチームメンバーのみが閲覧/書き込みできる internal な discussion board があり，そこではチームメンバーのみでの議論が行われることがあります．\
+Props Destructure はそこでも多くの議論が重ねられていました．
+
+個人的には総じて，Props Destructure はとても良いものだと感じています．
+そして，それを「良い」と評価するにはいくつかのポイントがあると思っているので以下にそれをまとめてこの記事の締めとしたいと思います．
+
+- Vue.js は「コンパイラと言語ツールを通じて DX を向上させる」という方針を持っていること\
+  これは一貫した考えがあると思います．ここについては以前の僕のスライドをぜひ見てみてください．
+  [What is Vue.js? Hmm… It’s just a language lol](https://ubugeeei.github.io/v-tokyo-20)
+- 既存の API とのちょうど良い落とし所がどこか考えること\
+  そもそも Vue.js で props を定義するランタイムコードは props オプションただ一つです．\
+  こちらに関しては [同 publication のコンパイラマクロに関する記事](https://zenn.dev/comm_vue_nuxt/articles/what-is-vue-compiler-macro#%F0%9F%92%A1-%E3%82%B3%E3%83%A9%E3%83%A0-2%EF%BC%8E-%E6%AD%B4%E5%8F%B2%E7%9A%84%E8%83%8C%E6%99%AF) をぜひ見てください．
+- 利点と欠点を理解し，欠点との向き合い方について考えてみること\
+  これは言わずもがなだと思います．\
+  RFC にモチベーションと欠点，そしてその欠点に対する向き合い方が書かれているのでまずはそれを読みましょう．\
+  https://github.com/vuejs/rfcs/discussions/502#discussion-5140019
+  「Motivation」の部分と「Drawbacks」の部分です．\
+  また，欠点に関してはここに書かれてあることに加え，「言語ツールによる支援」があることも念頭においてみましょう．
+- 仕組みについて理解してみること\
+  これは必須ではありませんが，どのように実装されているのかを知ることで考え方や勘所を掴むことができます．\
+  ここに関してはぜひこの記事を参考にしてもらえると嬉しいです．\
+  一度仕組みを理解し，日頃コーディングするときは瞬間的にそのことを忘れ，表面に現れるインターフェイスに集中し，少し迷った時に仕組みを思い出してみる．\
+  みたいなスイッチをすることができればかなり強いと思います．
+
+おしまい
