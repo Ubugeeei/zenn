@@ -770,6 +770,8 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 
 ### 1.1 walk import declarations of `<script>` 
 
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L280
+
 script タグの import の解析です．\
 import 文ももちろん識別子のバインディングがあるので，解析して bindingMetadata に追加しています．\
 ここで気をつけたいのは，これらは `<script>` の処理であり，`<script setup>` は別の処理になっている点です．
@@ -785,10 +787,42 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L250-L258
 
-この `ctx.userImports` は後ほど `bindingMetadata` に統合されるます．
+この `ctx.userImports` は後ほど `bindingMetadata` に統合されます．
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L726-L736
 
+
+### 1.2 walk import declarations of `<script setup>`
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L302
+
+先ほどの処理の `<script setup>` 版です．
+
+`bindingMetadata` を生成する処理は同じですが，通常の script と違う点は import 文を hoist したりしている点です． (setup 関数の中には書けないので)
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L306
+
+### 2.1 process normal `<script>` body
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L380
+
+こちらはかなり長いですが，注目するべきところは後半に呼び出されている `walkDeclaration` です．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L461-L484
+
+変数や関数，クラスの宣言があった場合にはそれらを元に bindingMetadata に情報を追加しています．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L1052-L1059
+
+定義された変数が `const` であるかどうか，初期値が `ref`, `computed`, `shallowRef`, `customRef`, `toRef` の呼び出しであるかどうかなど，細かく判定います．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L1063
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L1110-L1115
+
+さらにここでポイントなのは，初期値が `defineProps`, `defineEmits`, `withDefaults` などのコンパイラマクロの呼び出してあるかどうかも判定している点です．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L1073-L1082
 
 ## defineProps を読む
 
