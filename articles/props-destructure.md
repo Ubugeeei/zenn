@@ -832,6 +832,32 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L1102-L1104
 
+## 2.2 process `<script setup>` body
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L499
+
+続いて `<script setup>` の処理です．
+
+早速 `processDefineProps` や `processDefineEmits`, `processDefineOptions` といったなんとも香ばしい関数が並んでいます．
+
+変数宣言についてハンドリングしている部分を見てみましょう．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L524
+
+この辺りで `defineProps` や `defineEmits` が処理されていることがわかります．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L540-L552
+
+今回は `defineProps` に絞って読んでいきます．\
+ついては `processDefineProps` という関数を読んでいきます．
+
+## defineProps を読む
+
+`processDefineProps` は [script/defineProps.ts](https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts) に実装されています．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L47-L51
+
+
 ### 3 props destructure transform
 
 ここが今回の肝です．
@@ -943,9 +969,25 @@ rewriteId では，単純な識別子の書き換え (e.g. `x --> __props.x`) �
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L188-L217
 
+以上で Props Destructure の **識別子の書き換え** に関する処理は終わりです．
 
+・
+・
+・
 
-## defineProps を読む
+そうです，察された方もいるかもしれませんが，デフォルト値の処理はここで行われていませんでした．
+
+## 6. analyze binding metadata
+
+もう何をやったか覚えてない方もいるかもしれませんが，ようやく戻ってきました．\
+これまで，compileScript の 1.1, 1.2, 2, 3 と進んで，3 については Props Destructure の処理を見ました．\
+続きです．
+
+4, 5 は一旦読み飛ばして，6 の binding metadata の解析に進みます．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/compileScript.ts#L721-L722
+
+コメントを見てみると，どうやらここで defineProps の解析結果の登録も行っているようです．
 
 # 言語ツールの支援について
 
