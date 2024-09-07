@@ -878,7 +878,6 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L234-L235
 
-
 `node.body` (`Statement[]`) を見て回り，識別子を生成しうる箇所を探しながら登録していきます．\
 具体的には変数，関数，クラスの宣言です．
 
@@ -887,6 +886,64 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 これにより，currentScope として設定されているスコープに対してバインディング情報が登録されます．
 
 この `walkScope` 関数は，`walk` 関数の中で呼び出されています．
+
+それでは，ここからは実際に `walk` 関数で行っていることを見ていきましょう．
+
+leave hook では大したことをやっていないので，先にこっちだけ把握しておきましょう．\
+重要な部分は，AST Node の type が `/Function(?:Expression|Declaration)$|Method$/` にマッチする時または BlockStatement である時に `popScope` している点です．\
+ここだけ押さえておけば問題ないでしょう．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L293-L298
+
+それでは，メインの enter hook の方です．
+
+#### function scopes
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L254-L261
+
+`/Function(?:Expression|Declaration)$|Method$/` にマッチする場合です．
+
+`pushScope` しつつ，引数も walk して binding を登録しておきます．
+
+#### catch param
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L263-L271
+
+続いて catch のパラメータです．
+こちらはなんとも見落としがちですが，
+
+```ts
+try {
+} catch (e) {}
+```
+
+の `e` の部分です．これも忘れず登録しておきます．
+
+#### non-function block scopes
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L274-L278
+
+続いて block scopes です．\
+function 以外のものが相当するようなので，if や for, while, try などに渡される BlockStatement などは全て対象です．
+
+こちらは body の statement を見て周り，変数宣言や関数宣言などを見つけて binding を登録していきます．
+
+#### identifier
+
+ここまででバインディングの登録は終わっていて，最後に Identifier に入った時にバインディング情報をもとに id を書き換えます．\
+`count` などが `__props.count` に変換されるのはまさにこの時です．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L280-L290
+
+scope の値を見て，local 変数でなかった場合は rewriteId を実行します．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L285-L287
+
+rewriteId では，単純な識別子の書き換え (e.g. `x --> __props.x`) に加え， オブジェクトのショートハンドなども処理しています．(e.g. `{ prop } -> { prop: __props.prop }`)
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/definePropsDestructure.ts#L188-L217
+
+
 
 ## defineProps を読む
 
