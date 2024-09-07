@@ -1196,6 +1196,42 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 
 https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-sfc/src/script/defineProps.ts#L231-L235
 
+## Template での識別子の扱い
+
+かなり長かったですが，ここまでで Props Destructure と defineProps の実装を追うことができました．\
+同時に， bindingMetadata にバインディングの情報が登録できているので，compileTemplate の方ではその情報を参照することで，\
+template で識別子を扱う際に正しい参照元のコードを出力することができます．
+
+今回は Props Destructure について理解することが目的なので，template のコンパイラについては詳しくは触れませんが，\
+一応該当の部分はこの辺りのコードになります．
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-core/src/transforms/transformExpression.ts#L119-L123
+
+template のコンパイラは transformer というインタフェースを持っており，任意のトランスフォーム処理を実行することができます．\
+中でも，これは `transformExpression` というトランスフォーマで，template に登場する式に対する変換を行なっています．
+
+特に，CallExpression や MemberExpression，IdentifierExpression に関しては正しい参照元を辿ってコードを書き換える必要があります．
+その処理が上記の rewriteIdentifier です．
+
+登録された BindingTypes を元に正しい prefix を付与したりします．\
+e.g. `{{ renamedCount }}` -> `{{ $props['renamedCount'] }}`
+
+https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/packages/compiler-core/src/transforms/transformExpression.ts#L216-L218
+
+## 実装方法についてまとめ
+
+ここまでで bindingMetadata の解析，defineProps, withDefault のハンドリング，destructuring された props へ参照の追跡，bindingMetadata に基づいた template のコンパイルについて見てきました．\
+これで一通りの処理に目を通したことになります．\
+お疲れ様でした．
+
+しかし今回のタイトルは「Props Destructure の実装方法！」ではありません．\
+「*Props Destructure を支える技術*」です．
+
+コンパイラはもちろんその一つですが，もう一つ大事なものがあります．
+
+それが「言語ツールによる支援」です．
+
+
 # 言語ツールの支援について
 
 # 総じて，どのように Props Destructure と向き合うのが良さそうか
