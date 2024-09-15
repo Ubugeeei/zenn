@@ -1,23 +1,17 @@
 {
-  "name": "zenn",
+  "name": "ubugeeei-zenn",
+  "author": "Ubugeeei <ubuge1122@gmail.com>",
+  "license": "ISC",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "packageManager": "pnpm@9.10.0",
   "scripts": {
+    "prepare": "husky install",
     "dev": "zenn preview",
     "article": "zenn new:article",
     "book": "zenn new:book",
     "lint": "textlint .",
     "lint:fix": "textlint . --fix"
   },
-  "config": {
-    "commitizen": {
-      "path": "git-cz"
-    }
-  },
-  "keywords": [],
-  "author": "Ubugeeei <ubuge1122@gmail.com>",
-  "license": "ISC",
   "devDependencies": {
     "husky": "^8.0.3",
     "textlint": "^13.3.3",
@@ -26,6 +20,5 @@
     "textlint-rule-prh": "^6.0.0",
     "textlint-rule-spellcheck-tech-word": "^5.0.0",
     "zenn-cli": "^0.1.141"
-  },
-  "packageManager": "pnpm@9.9.0"
+  }
 }
