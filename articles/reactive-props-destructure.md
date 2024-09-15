@@ -1086,7 +1086,7 @@ https://github.com/vuejs/core/blob/6402b984087dd48f1a11f444a225d4ac6b2b7b9e/pack
 さて，`analyzeScriptBindings` を抜けて 6 の処理の続きを見てみましょう．\
 続きは簡単で，これまでに収集した `ctx.userImports` や `scriptBindings`, `setupBindings` 等を `ctx.bindingMetadata` に統合しています．
 
-ここまでで bindingMetadata は完成です！お疲れ様でした！\
+ここまでで bindingMetadata は完成です！　お疲れ様でした！\
 残りはコード生成を見ていきましょう！
 
 ## 8. finalize setup() argument signature
@@ -1292,12 +1292,12 @@ Reactive Props Destructure はそこでも多くの議論が重ねられてい�
   これは言わずもがなだと思います．\
   RFC にモチベーションと欠点，そしてその欠点に対する向き合い方が書かれているのでまずはそれを読みましょう．\
   https://github.com/vuejs/rfcs/discussions/502#discussion-5140019
-  「Motivation」の部分と「Drawbacks」の部分です．\
+ 「Motivation」の部分と「Drawbacks」の部分です．\
   また，欠点に関してはここに書かれてあることに加え，「言語ツールによる支援」があることも念頭においてみましょう．
 - 仕組みについて理解してみること\
   これは必須ではありませんが，どのように実装されているのかを知ることで考え方や勘所を掴むことができます．\
   ここに関してはぜひこの記事を参考にしてもらえると嬉しいです．\
-  一度仕組みを理解し，日頃コーディングするときは瞬間的にそのことを忘れ，表面に現れるインターフェイスに集中し，少し迷った時に仕組みを思い出してみる．\
+  一度仕組みを理解し，日頃コーディングするときは瞬間的にそのことを忘れ，表面に現れるインタフェースに集中し，少し迷った時に仕組みを思い出してみる．\
   みたいなスイッチをすることができればかなり強いと思います．
 
 おしまい
