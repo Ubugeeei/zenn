@@ -1,11 +1,11 @@
 {
   "name": "ubugeeei-zenn",
-  "author": "Ubugeeei <ubuge1122@gmail.com>",
+  "author": "ubugeeei",
   "license": "ISC",
   "version": "1.0.0",
   "packageManager": "pnpm@9.10.0",
   "scripts": {
-    "prepare": "husky install",
+    "prepare": "husky || true",
     "dev": "zenn preview",
     "article": "zenn new:article",
     "book": "zenn new:book",
