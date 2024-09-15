@@ -20,6 +20,9 @@ importers:
       textlint-rule-preset-ja-technical-writing:
         specifier: ^8.0.0
         version: 8.0.0(textlint@13.3.3)
+      textlint-rule-prh:
+        specifier: ^6.0.0
+        version: 6.0.0
       textlint-rule-spellcheck-tech-word:
         specifier: ^5.0.0
         version: 5.0.0(textlint@13.3.3)
@@ -43,8 +46,16 @@ packages:
     resolution: {integrity: sha512-mM4COjgZox8U+JcXQwPijIZLElkgEpO5rsERVDJTc2qfCDfERyob6k5WegS14SX18IIjv+XD+GrqNumY5JRCDw==}
     engines: {node: '>=6.9.0'}
 
+  '@babel/helper-string-parser@7.24.8':
+    resolution: {integrity: sha512-pO9KhhRcuUyGnJWwyEgnRJTSIZHiT+vMD0kPeD+so0l7mxkMT19g3pjY9GTnHySck/hDzq+dtW/4VgnMkippsQ==}
+    engines: {node: '>=6.9.0'}
+
   '@babel/helper-validator-identifier@7.22.5':
     resolution: {integrity: sha512-aJXu+6lErq8ltp+JhkJUfk1MTGyuA4v7f3pA+BJ5HLfNC6nAQ0Cpi9uOquUj8Hehg0aUiHzWQbOVJGao6ztBAQ==}
+    engines: {node: '>=6.9.0'}
+
+  '@babel/helper-validator-identifier@7.24.7':
+    resolution: {integrity: sha512-rR+PBcQ1SMQDDyF6X0wxtG8QyLCgUB0eRAGguqRLfkCA87l7yAP7ehq8SNj96OOGTO8OBV70KhuFYcIkHXOg0w==}
     engines: {node: '>=6.9.0'}
 
   '@babel/parser@7.22.7':
@@ -52,8 +63,17 @@ packages:
     engines: {node: '>=6.0.0'}
     hasBin: true
 
+  '@babel/parser@7.25.6':
+    resolution: {integrity: sha512-trGdfBdbD0l1ZPmcJ83eNxB9rbEax4ALFTF7fN386TMYbeCQbyme5cOEXQhbGXKebwGaB/J52w1mrklMcbgy6Q==}
+    engines: {node: '>=6.0.0'}
+    hasBin: true
+
   '@babel/types@7.22.5':
     resolution: {integrity: sha512-zo3MIHGOkPOfoRXitsgHLjEXmlDaD/5KU1Uzuc9GNiZPhSqVxVRtxuPaSBZDsYZ9qV88AjtMtWW7ww98loJ9KA==}
+    engines: {node: '>=6.9.0'}
+
+  '@babel/types@7.25.6':
+    resolution: {integrity: sha512-/l42B1qxpG6RdfYf343Uw1vmDjeNhneUXtzhojE7pDgfpEypmRhI6j1kr17XCVv4Cgl9HdAiQY2x0GwKm7rWCw==}
     engines: {node: '>=6.9.0'}
 
   '@textlint-rule/textlint-rule-no-invalid-control-character@2.0.0':
@@ -64,6 +84,9 @@ packages:
 
   '@textlint/ast-node-types@13.3.3':
     resolution: {integrity: sha512-KCpJppfX3Km69twa6SmVEJ8mkyAZSrxw3XaaLQSlpc7PWnLUJSCHGPVECI1nSUDhiTd1r6zlRvWuyIAZJiov+A==}
+
+  '@textlint/ast-node-types@13.4.1':
+    resolution: {integrity: sha512-qrZyhCh8Ekk6nwArx3BROybm9BnX6vF7VcZbijetV/OM3yfS4rTYhoMWISmhVEP2H2re0CtWEyMl/XF+WdvVLQ==}
 
   '@textlint/ast-node-types@4.4.3':
     resolution: {integrity: sha512-qi2jjgO6Tn3KNPGnm6B7p6QTEPvY95NFsIAaJuwbulur8iJUEenp1OnoUfiDaC/g2WPPEFkcfXpmnu8XEMFo2A==}
@@ -926,6 +949,9 @@ packages:
   textlint-rule-helper@2.3.0:
     resolution: {integrity: sha512-Ug78Saahb/qVImttL0NSFyT5/JJ5wXvOPepR2pYAjNi54BsQAAz/hAyyEgKuYeR0+yjFb0KPhby4f880X5vqHA==}
 
+  textlint-rule-helper@2.3.1:
+    resolution: {integrity: sha512-b1bijvyiUmKinfFE5hkQMSXs3Ky8jyZ3Y6SOoTRJKV9HLL2LWUVFAUezO7z4FpAkVvYruDYWCwA5qWV8GmvyUw==}
+
   textlint-rule-ja-nakaguro-or-halfwidth-space-between-katakana@2.2.0:
     resolution: {integrity: sha512-6e5LfdjQgpkvGqMPFLxXtXyfXgc8iLOBuBda1jPWT873ttlfzTR9djjS7zmTkmNZDO4x0nvYPNTxCvgvilzlMQ==}
 
@@ -1017,6 +1043,9 @@ packages:
 
   textlint-rule-prh@5.3.0:
     resolution: {integrity: sha512-gdod+lL1SWUDyXs1ICEwvQawaSshT3mvPGufBIjF2R5WFPdKQDMsiuzsjkLm+aF+9d97dA6pFsiyC8gSW7mSgg==}
+
+  textlint-rule-prh@6.0.0:
+    resolution: {integrity: sha512-byU7eUyhabX2FKx3ShOktKkmKLG5dhR0ru+PGllKgafKKWXtzOIAhAaDlqMC5qU6b3Jaz5rKQcnroGVCEjcP1Q==}
 
   textlint-rule-sentence-length@4.0.2:
     resolution: {integrity: sha512-q6RA4Udd0c5K8sl61ftZuHSIJ9AkKBF1OaRgJkWnrFhAbBQV0za4kJMbwqMYDQ8fyGy+Q4G9uzjamqE5QhrGVg==}
@@ -1156,16 +1185,30 @@ snapshots:
 
   '@babel/helper-string-parser@7.22.5': {}
 
+  '@babel/helper-string-parser@7.24.8': {}
+
   '@babel/helper-validator-identifier@7.22.5': {}
+
+  '@babel/helper-validator-identifier@7.24.7': {}
 
   '@babel/parser@7.22.7':
     dependencies:
       '@babel/types': 7.22.5
 
+  '@babel/parser@7.25.6':
+    dependencies:
+      '@babel/types': 7.25.6
+
   '@babel/types@7.22.5':
     dependencies:
       '@babel/helper-string-parser': 7.22.5
       '@babel/helper-validator-identifier': 7.22.5
+      to-fast-properties: 2.0.0
+
+  '@babel/types@7.25.6':
+    dependencies:
+      '@babel/helper-string-parser': 7.24.8
+      '@babel/helper-validator-identifier': 7.24.7
       to-fast-properties: 2.0.0
 
   '@textlint-rule/textlint-rule-no-invalid-control-character@2.0.0':
@@ -1178,6 +1221,8 @@ snapshots:
       textlint-rule-helper: 2.0.1
 
   '@textlint/ast-node-types@13.3.3': {}
+
+  '@textlint/ast-node-types@13.4.1': {}
 
   '@textlint/ast-node-types@4.4.3': {}
 
@@ -2197,6 +2242,12 @@ snapshots:
       structured-source: 4.0.0
       unist-util-visit: 2.0.3
 
+  textlint-rule-helper@2.3.1:
+    dependencies:
+      '@textlint/ast-node-types': 13.4.1
+      structured-source: 4.0.0
+      unist-util-visit: 2.0.3
+
   textlint-rule-ja-nakaguro-or-halfwidth-space-between-katakana@2.2.0:
     dependencies:
       match-index: 1.0.3
@@ -2402,6 +2453,12 @@ snapshots:
       prh: 5.4.4
       textlint-rule-helper: 2.3.0
       untildify: 3.0.3
+
+  textlint-rule-prh@6.0.0:
+    dependencies:
+      '@babel/parser': 7.25.6
+      prh: 5.4.4
+      textlint-rule-helper: 2.3.1
 
   textlint-rule-sentence-length@4.0.2:
     dependencies:

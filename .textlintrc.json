@@ -1,6 +1,4 @@
 {
-  "plugins": {},
-  "filters": {},
   "rules": {
     "preset-ja-spacing": {
       "ja-space-between-half-and-full-width": {
@@ -8,6 +6,9 @@
       }
     },
     "preset-ja-technical-writing": false,
-    "spellcheck-tech-word": true
+    "spellcheck-tech-word": true,
+    "prh": {
+      "rulePaths" :["rules/prh-punctuation-mark.yml"]
+    }
   }
 }

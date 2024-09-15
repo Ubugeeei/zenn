@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "zenn preview",
     "article": "zenn new:article",
-    "book": "zenn new:book"
+    "book": "zenn new:book",
+    "lint": "textlint .",
+    "lint:fix": "textlint . --fix"
   },
   "config": {
     "commitizen": {
@@ -21,6 +23,7 @@
     "textlint": "^13.3.3",
     "textlint-rule-preset-ja-spacing": "^2.3.0",
     "textlint-rule-preset-ja-technical-writing": "^8.0.0",
+    "textlint-rule-prh": "^6.0.0",
     "textlint-rule-spellcheck-tech-word": "^5.0.0",
     "zenn-cli": "^0.1.141"
   },
